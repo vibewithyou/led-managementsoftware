@@ -16,12 +16,16 @@ class MediaLibraryController extends ChangeNotifier {
   MediaAssetEntity? _selectedAsset;
   String? _error;
 
+  /// The id of the most recently imported asset – used to trigger FadeIn.
+  String? _lastImportedId;
+
   bool get isLoading => _isLoading;
   List<MediaAssetEntity> get assets => _filteredAssets;
   String get searchQuery => _searchQuery;
   MediaCategory? get selectedCategory => _selectedCategory;
   MediaAssetEntity? get selectedAsset => _selectedAsset;
   String? get error => _error;
+  String? get lastImportedId => _lastImportedId;
 
   Future<void> load() async {
     _isLoading = true;
@@ -86,11 +90,32 @@ class MediaLibraryController extends ChangeNotifier {
         isCueLocked: isCueLocked,
         isFavorite: isFavorite,
       );
-      await load();
+
+      // Reload and mark the newest asset for FadeIn animation.
+      final before = _allAssets.map((a) => a.id).toSet();
+      await _loadSilent();
+      final newAsset = _filteredAssets.where((a) => !before.contains(a.id)).firstOrNull;
+      _lastImportedId = newAsset?.id;
+      _selectedAsset = newAsset ?? (_filteredAssets.isNotEmpty ? _filteredAssets.first : null);
+      notifyListeners();
     } catch (exception) {
       _error = exception.toString();
       notifyListeners();
       rethrow;
+    }
+  }
+
+  /// Clears the FadeIn mark after the animation has played.
+  void clearLastImportedId() {
+    _lastImportedId = null;
+  }
+
+  Future<void> _loadSilent() async {
+    try {
+      _allAssets = await _service.loadAssets();
+      _applyFilters();
+    } catch (_) {
+      // Silent – errors bubble up through the public importAsset call.
     }
   }
 
@@ -120,8 +145,4 @@ class MediaLibraryController extends ChangeNotifier {
     }
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }

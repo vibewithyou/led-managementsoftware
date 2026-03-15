@@ -72,7 +72,7 @@ class SidebarNavigation extends StatelessWidget {
                   onTap: () => onSelect(route),
                 );
               },
-              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
+              separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.xs),
               itemCount: AppRoute.values.length,
             ),
           ),

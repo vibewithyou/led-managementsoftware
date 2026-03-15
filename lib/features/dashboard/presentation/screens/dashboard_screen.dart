@@ -103,7 +103,7 @@ class DashboardScreen extends StatelessWidget {
                                       ],
                                     ),
                                   ),
-                                  separatorBuilder: (_, __) => const Divider(),
+                                  separatorBuilder: (context, index) => const Divider(),
                                 ),
                               ),
                             ),

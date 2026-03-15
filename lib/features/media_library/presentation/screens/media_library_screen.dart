@@ -142,10 +142,16 @@ class _MediaLibraryScreenState extends State<MediaLibraryScreen> {
                                       ),
                                       itemBuilder: (_, index) {
                                         final asset = _controller.assets[index];
+                                        final isNew = asset.id == _controller.lastImportedId;
                                         return MediaClipTile(
+                                          key: ValueKey(asset.id),
                                           asset: asset,
                                           isSelected: _controller.selectedAsset?.id == asset.id,
-                                          onTap: () => _controller.selectAsset(asset),
+                                          animateIn: isNew,
+                                          onTap: () {
+                                            _controller.selectAsset(asset);
+                                            if (isNew) _controller.clearLastImportedId();
+                                          },
                                         );
                                       },
                                     ),
@@ -246,7 +252,7 @@ class _MediaLibraryScreenState extends State<MediaLibraryScreen> {
 
     final importResult = await showDialog<MediaImportDialogResult>(
       context: context,
-      builder: (_) => MediaImportDialog(fileName: fileName),
+      builder: (_) => MediaImportDialog(fileName: fileName, filePath: filePath),
     );
 
     if (!mounted || importResult == null) {
@@ -272,7 +278,17 @@ class _MediaLibraryScreenState extends State<MediaLibraryScreen> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Clip wurde importiert.')),
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(child: Text('"${importResult.title}" wurde importiert.')),
+            ],
+          ),
+          backgroundColor: const Color(0xFF1C6B3A),
+          duration: const Duration(seconds: 3),
+        ),
       );
     } catch (exception) {
       if (!mounted) {

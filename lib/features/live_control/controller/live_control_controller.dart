@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:led_management_software/data/services/global_hotkey_service.dart';
 import 'package:led_management_software/data/services/playback_service.dart';
 import 'package:led_management_software/domain/entities/cue.dart';
 import 'package:led_management_software/domain/entities/live_event_log.dart';
@@ -9,10 +12,17 @@ import 'package:led_management_software/domain/enums/playback_status.dart';
 import 'package:led_management_software/domain/enums/queue_behavior.dart';
 import 'package:led_management_software/features/live_control/model/live_cue_model.dart';
 import 'package:led_management_software/features/live_control/service/live_control_service.dart';
+import 'package:led_management_software/features/settings/service/settings_service.dart';
 
 /// Manages live trigger behavior, sponsor lock handling and playback progress.
 class LiveControlController extends ChangeNotifier {
-  LiveControlController({LiveControlService? service}) : _service = service ?? const LiveControlService() {
+  LiveControlController({
+    LiveControlService? service,
+    SettingsService? settingsService,
+    GlobalHotkeyService? globalHotkeyService,
+  })  : _service = service ?? const LiveControlService(),
+        _settingsService = settingsService ?? SettingsService.instance,
+        _globalHotkeyService = globalHotkeyService ?? GlobalHotkeyService.instance {
     _eventDurations = _service.eventDurationsMs();
     _eventButtons = _service.liveEventButtons();
 
@@ -29,14 +39,19 @@ class LiveControlController extends ChangeNotifier {
       cueDurationsMs: _eventDurations,
     );
     _playbackService.addListener(_onPlaybackChanged);
+    _settingsService.addListener(_onSettingsChanged);
     _syncFromPlaybackService();
 
     if (_playbackState.status == PlaybackStatus.idle) {
       _playbackService.returnToFallback(triggerSource: 'bootstrap');
     }
+
+    unawaited(_registerGlobalHotkeys());
   }
 
   final LiveControlService _service;
+  final SettingsService _settingsService;
+  final GlobalHotkeyService _globalHotkeyService;
   late final Map<String, int> _eventDurations;
   late final List<String> _eventButtons;
   late final PlaybackService _playbackService;
@@ -54,9 +69,33 @@ class LiveControlController extends ChangeNotifier {
 
   List<LiveEventLog> get logs => _logs;
 
+  List<LiveEventLog> get recentLogs => _logs.reversed.take(6).toList(growable: false);
+
   List<String> get eventButtons => _eventButtons;
 
+  bool get globalHotkeysActive => _globalHotkeyService.isRegistered;
+
   bool get sponsorLockedRunning => _playbackService.playbackState.status == PlaybackStatus.locked;
+
+  bool get vlcRunning => _playbackService.isVlcRunning;
+
+  String get activeProjectId => _playbackService.projectId;
+
+  bool get fallbackConfigured => _playbackService.fallbackCue.title.trim().isNotEmpty;
+
+  int get queueLength => _queue.length;
+
+  String get lockedSponsorLabel {
+    final cue = _playbackService.playbackState.currentCue;
+    if (cue == null || !sponsorLockedRunning) {
+      return 'LOCKED SPONSOR CLIP';
+    }
+    return cue.title.trim().isEmpty ? 'LOCKED SPONSOR CLIP' : cue.title.toUpperCase();
+  }
+
+  String hotkeyForEvent(String eventLabel) {
+    return _settingsService.hotkeyForEvent(eventLabel);
+  }
 
   double get progress {
     final total = _playbackState.currentMediaPositionMs + _playbackState.remainingMs;
@@ -100,8 +139,20 @@ class LiveControlController extends ChangeNotifier {
     );
   }
 
+  void triggerEmergencyBlackScreen() {
+    _playbackService.startCue(
+      _buildCue('Black Screen', cueType: CueType.fallback),
+      triggerSource: 'operator_emergency',
+    );
+  }
+
   void _onPlaybackChanged() {
     _syncFromPlaybackService();
+    notifyListeners();
+  }
+
+  void _onSettingsChanged() {
+    unawaited(_registerGlobalHotkeys());
     notifyListeners();
   }
 
@@ -135,6 +186,19 @@ class LiveControlController extends ChangeNotifier {
     return 'event';
   }
 
+  Future<void> _registerGlobalHotkeys() async {
+    try {
+      await _globalHotkeyService.registerHotkeys(
+        bindings: _settingsService.currentHotkeyMap(),
+        onTriggered: triggerEvent,
+      );
+    } catch (error) {
+      debugPrint('Globale Hotkeys konnten nicht registriert werden: $error');
+    }
+
+    notifyListeners();
+  }
+
   Cue _buildCue(
     String title, {
     required CueType cueType,
@@ -161,6 +225,8 @@ class LiveControlController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _settingsService.removeListener(_onSettingsChanged);
+    unawaited(_globalHotkeyService.unregisterAll());
     _playbackService.removeListener(_onPlaybackChanged);
     _playbackService.dispose();
     super.dispose();

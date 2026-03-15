@@ -7,29 +7,60 @@ class LiveEventButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.semanticColor = AppColors.primary,
+    this.hotkeyLabel,
     super.key,
   });
 
   final String label;
   final VoidCallback onPressed;
   final Color semanticColor;
+  final String? hotkeyLabel;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 82,
-      width: double.infinity,
-      child: Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: Theme.of(context).colorScheme.copyWith(primary: semanticColor),
+    return Stack(
+      children: [
+        SizedBox(
+          height: 82,
+          width: double.infinity,
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: Theme.of(context).colorScheme.copyWith(primary: semanticColor),
+            ),
+            child: LargeActionButton(
+              label: label,
+              icon: _iconForLabel(label),
+              onPressed: onPressed,
+              destructive: label == 'Stop',
+            ),
+          ),
         ),
-        child: LargeActionButton(
-          label: label,
-          icon: _iconForLabel(label),
-          onPressed: onPressed,
-          destructive: label == 'Stop',
-        ),
-      ),
+        if (hotkeyLabel != null)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.background.withValues(alpha: 0.74),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.borderStrong),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Text(
+                    hotkeyLabel!,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 

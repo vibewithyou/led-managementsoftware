@@ -93,9 +93,4 @@ class ProjectsController extends ChangeNotifier {
       ),
     );
   }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }

@@ -1,4 +1,8 @@
-import 'package:led_management_software/data/models/media_asset_model.dart';
+import 'dart:convert';
+
+import 'package:isar/isar.dart';
+import 'package:led_management_software/data/local/isar/collections/isar_media_asset_record.dart';
+import 'package:led_management_software/data/local/isar/isar_database.dart';
 import 'package:led_management_software/domain/entities/media_asset.dart';
 import 'package:led_management_software/domain/entities/media_asset_entity.dart';
 import 'package:led_management_software/domain/enums/cue_type.dart';
@@ -9,12 +13,19 @@ import 'package:led_management_software/domain/repositories/media_library_reposi
 class MediaLibraryRepositoryImpl implements MediaLibraryRepository {
   MediaLibraryRepositoryImpl();
 
-  final List<MediaAssetModel> _storage = [];
-
   @override
   Future<List<MediaAssetEntity>> getAllAssets() async {
-    _seedIfEmpty();
-    return _storage.map((model) => model.toEntity()).toList(growable: false);
+    try {
+      await _seedIfEmpty();
+      final isar = await IsarDatabase.instance.database;
+      final records = await isar.isarMediaAssetRecords.where().findAll();
+      return records
+          .map((record) => MediaAsset.fromJson(jsonDecode(record.payloadJson) as Map<String, dynamic>))
+          .toList(growable: false)
+        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    } catch (error) {
+      throw Exception('Media assets konnten nicht geladen werden: $error');
+    }
   }
 
   @override
@@ -45,14 +56,26 @@ class MediaLibraryRepositoryImpl implements MediaLibraryRepository {
 
   @override
   Future<void> saveAsset(MediaAssetEntity asset) async {
-    final index = _storage.indexWhere((item) => item.id == asset.id);
-    final model = MediaAssetModel.fromEntity(asset);
+    try {
+      final isar = await IsarDatabase.instance.database;
+      await isar.writeTxn(() async {
+        final existing = await isar.isarMediaAssetRecords
+            .filter()
+            .externalIdEqualTo(asset.id)
+            .findFirst();
 
-    if (index == -1) {
-      _storage.add(model);
-      return;
+        final record = existing ?? IsarMediaAssetRecord();
+        record.externalId = asset.id;
+        record.payloadJson = jsonEncode(asset.toJson());
+        record.updatedAt = DateTime.now();
+        if (existing == null) {
+          record.createdAt = DateTime.now();
+        }
+        await isar.isarMediaAssetRecords.put(record);
+      });
+    } catch (error) {
+      throw Exception('Media asset konnte nicht gespeichert werden: $error');
     }
-    _storage[index] = model;
   }
 
   @override
@@ -68,8 +91,6 @@ class MediaLibraryRepositoryImpl implements MediaLibraryRepository {
     required bool isFavorite,
     required String cueTypeValue,
   }) async {
-    _seedIfEmpty();
-
     final now = DateTime.now();
     final nextId = 'media_${now.microsecondsSinceEpoch}';
 
@@ -96,8 +117,10 @@ class MediaLibraryRepositoryImpl implements MediaLibraryRepository {
     await saveAsset(entity);
   }
 
-  void _seedIfEmpty() {
-    if (_storage.isNotEmpty) {
+  Future<void> _seedIfEmpty() async {
+    final isar = await IsarDatabase.instance.database;
+    final count = await isar.isarMediaAssetRecords.count();
+    if (count > 0) {
       return;
     }
 
@@ -141,47 +164,18 @@ class MediaLibraryRepositoryImpl implements MediaLibraryRepository {
         updatedAt: now,
         isActive: true,
       ),
-      MediaAsset(
-        id: 'seed_3',
-        title: 'Player Intro #13',
-        filePath: r'D:\clips\player_13_intro.mp4',
-        fileName: 'player_13_intro.mp4',
-        thumbnailPath: '',
-        durationMs: 9000,
-        category: MediaCategory.player,
-        tags: const ['player', 'intro'],
-        sponsorName: null,
-        playerName: 'Max Mustermann',
-        teamType: TeamType.home,
-        cueType: CueType.oneShot,
-        isCueLocked: false,
-        isFavorite: false,
-        createdAt: now,
-        updatedAt: now,
-        isActive: true,
-      ),
-      MediaAsset(
-        id: 'seed_4',
-        title: 'Emergency Hold Frame',
-        filePath: r'D:\clips\emergency_hold.avi',
-        fileName: 'emergency_hold.avi',
-        thumbnailPath: '',
-        durationMs: 0,
-        category: MediaCategory.emergency,
-        tags: const ['emergency', 'fallback'],
-        sponsorName: null,
-        playerName: null,
-        teamType: TeamType.neutral,
-        cueType: CueType.fallback,
-        isCueLocked: true,
-        isFavorite: false,
-        createdAt: now,
-        updatedAt: now,
-        isActive: true,
-      ),
     ];
 
-    _storage.addAll(seedAssets.map(MediaAssetModel.fromEntity));
+    await isar.writeTxn(() async {
+      for (final asset in seedAssets) {
+        final record = IsarMediaAssetRecord()
+          ..externalId = asset.id
+          ..payloadJson = jsonEncode(asset.toJson())
+          ..createdAt = now
+          ..updatedAt = now;
+        await isar.isarMediaAssetRecords.put(record);
+      }
+    });
   }
 
   String? _cleanOptional(String? value) {

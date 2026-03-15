@@ -9,7 +9,7 @@ class AppRouter {
     final selectedRoute = AppRoute.fromName(settings.name);
     return PageRouteBuilder(
       settings: RouteSettings(name: selectedRoute.path),
-      pageBuilder: (_, __, ___) => AppShell(currentRoute: selectedRoute),
+      pageBuilder: (context, animation, secondaryAnimation) => AppShell(currentRoute: selectedRoute),
       transitionDuration: Duration.zero,
       reverseTransitionDuration: Duration.zero,
     );

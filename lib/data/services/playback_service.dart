@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:led_management_software/data/repositories/media_repository_impl.dart';
+import 'package:led_management_software/data/repositories/live_log_repository_impl.dart';
 import 'package:led_management_software/domain/entities/cue.dart';
 import 'package:led_management_software/domain/entities/cue_execution.dart';
 import 'package:led_management_software/domain/entities/live_event_log.dart';
@@ -10,6 +12,9 @@ import 'package:led_management_software/domain/entities/queue_state.dart';
 import 'package:led_management_software/domain/enums/cue_type.dart';
 import 'package:led_management_software/domain/enums/live_action_type.dart';
 import 'package:led_management_software/domain/enums/playback_status.dart';
+import 'package:led_management_software/domain/repositories/live_log_repository.dart';
+import 'package:led_management_software/domain/repositories/media_repository.dart';
+import 'package:led_management_software/data/services/vlc_bridge_service.dart';
 
 /// Central playback engine for locked sponsor behavior, queue handling and fallback logic.
 class PlaybackService extends ChangeNotifier {
@@ -17,15 +22,24 @@ class PlaybackService extends ChangeNotifier {
     required String projectId,
     required Cue fallbackCue,
     required Map<String, int> cueDurationsMs,
+    LiveLogRepository? liveLogRepository,
+    MediaRepository? mediaRepository,
+    VlcService? vlcService,
   })  : _projectId = projectId,
         _fallbackCue = fallbackCue,
         _cueDurationsMs = cueDurationsMs,
+        _liveLogRepository = liveLogRepository ?? LiveLogRepositoryImpl(),
+        _mediaRepository = mediaRepository ?? MediaRepositoryImpl(),
+        _vlcService = vlcService ?? VlcService(),
         _playbackState = PlaybackState.initial(projectId: projectId),
         _queueState = QueueState.initial(projectId: projectId);
 
   final String _projectId;
   final Cue _fallbackCue;
   final Map<String, int> _cueDurationsMs;
+  final LiveLogRepository _liveLogRepository;
+  final MediaRepository _mediaRepository;
+  final VlcService _vlcService;
 
   PlaybackState _playbackState;
   QueueState _queueState;
@@ -42,7 +56,18 @@ class PlaybackService extends ChangeNotifier {
 
   List<LiveEventLog> get logs => List.unmodifiable(_logs);
 
-  /// Starts a cue unless a locked cue is running; in that case the cue is queued.
+  bool get isVlcRunning => _vlcService.isRunning();
+
+  String get projectId => _projectId;
+
+  Cue get fallbackCue => _fallbackCue;
+
+  /// Starts playback for a cue and mirrors that state back into the UI.
+  ///
+  /// Flow:
+  /// - Black screen cues interrupt immediately and stop VLC output.
+  /// - Locked cues block new playback and send incoming cues into the queue.
+  /// - All other cues update playback state first, then trigger VLC asynchronously.
   void startCue(Cue cue, {String triggerSource = 'manual'}) {
     if (_isBlackScreenCue(cue)) {
       _interruptWithBlackScreen(cue, triggerSource: triggerSource);
@@ -67,6 +92,7 @@ class PlaybackService extends ChangeNotifier {
       isLocked: isLocked,
       isBlackScreen: false,
       lastAction: LiveActionType.triggerCue,
+      // Clear previous transport errors as soon as a fresh cue starts.
       lastError: null,
     );
 
@@ -90,11 +116,13 @@ class PlaybackService extends ChangeNotifier {
       },
     );
 
+    unawaited(_playCueInVlc(cue, triggerSource: triggerSource));
+
     _startTicker();
     notifyListeners();
   }
 
-  /// Adds a cue to queue and marks state as queued when idle/playing transitions are needed.
+  /// Queues a cue when playback is currently blocked by a locked clip.
   void queueCue(Cue cue, {String reason = 'blocked'}) {
     final now = DateTime.now();
     final entry = QueueEntry(
@@ -129,7 +157,11 @@ class PlaybackService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Stops current playback and optionally clears queue; used by stop action and black-screen handling.
+  /// Stops the active cue and resets the transport/UI state.
+  ///
+  /// Edge cases:
+  /// - calling stop while idle is safe
+  /// - queue clearing remains optional because operators may want to preserve it
   void stopCue({bool clearQueue = false, String triggerSource = 'manual'}) {
     _ticker?.cancel();
     _currentExecution = null;
@@ -163,15 +195,23 @@ class PlaybackService extends ChangeNotifier {
       metadata: {'triggerSource': triggerSource},
     );
 
+    unawaited(_stopVlcPlayback(triggerSource: triggerSource));
+
     notifyListeners();
   }
 
-  /// Returns playback to standard fallback sponsor loop.
+  /// Returns playback to the configured fallback cue.
   void returnToFallback({String triggerSource = 'auto'}) {
     startCue(_fallbackCue, triggerSource: triggerSource);
   }
 
-  /// Handles cue completion according to lock and one-shot rules.
+  /// Finalizes a cue and performs the next transport transition.
+  ///
+  /// Flow:
+  /// - current VLC playback is stopped first
+  /// - queued content has priority
+  /// - finished one-shots return to fallback
+  /// - all other completed cues also return to fallback by default
   void handleCueFinished() {
     final finishedCue = _playbackState.currentCue;
 
@@ -187,32 +227,13 @@ class PlaybackService extends ChangeNotifier {
     _ticker?.cancel();
     _currentExecution = null;
 
-    if (_queueState.entries.isNotEmpty) {
-      final next = _queueState.entries.first;
-      _queueState = _queueState.copyWith(
-        entries: _queueState.entries.sublist(1),
-        updatedAt: DateTime.now(),
-      );
-      _appendLog(
-        actionType: LiveActionType.queueRemove,
-        cueId: next.cue.id,
-        result: 'dequeued',
-        metadata: {'queueLength': _queueState.entries.length},
-      );
-      startCue(next.cue, triggerSource: 'queue');
-      return;
-    }
-
-    // One-shot cues return automatically to fallback.
-    if (finishedCue != null && finishedCue.cueType == CueType.oneShot) {
-      returnToFallback(triggerSource: 'auto_oneshot_finished');
-      return;
-    }
-
-    // Locked or regular cues with empty queue also return to fallback by default.
-    returnToFallback(triggerSource: 'auto_finished');
+    unawaited(_handleCueFinishedTransition(finishedCue));
   }
 
+  /// Black screen is modeled as a local UI/output state:
+  /// VLC output is stopped and the app state flips to `black` so the UI stays in sync.
+  ///
+  /// A dedicated black-frame transport command can be added later without touching UI code.
   void _interruptWithBlackScreen(Cue blackCue, {required String triggerSource}) {
     _ticker?.cancel();
 
@@ -247,7 +268,41 @@ class PlaybackService extends ChangeNotifier {
       metadata: {'triggerSource': triggerSource},
     );
 
+    unawaited(_stopVlcPlayback(triggerSource: '${triggerSource}_black_screen'));
+
     notifyListeners();
+  }
+
+  Future<void> _handleCueFinishedTransition(Cue? finishedCue) async {
+    await _stopVlcPlayback(triggerSource: 'cue_finished');
+
+    if (_queueState.entries.isNotEmpty) {
+      final next = _queueState.entries.first;
+      _queueState = _queueState.copyWith(
+        entries: _queueState.entries.sublist(1),
+        updatedAt: DateTime.now(),
+      );
+      _appendLog(
+        actionType: LiveActionType.queueRemove,
+        cueId: next.cue.id,
+        result: 'dequeued',
+        metadata: {'queueLength': _queueState.entries.length},
+      );
+
+      // UI is notified before the next cue begins so queue widgets reflect the dequeue instantly.
+      notifyListeners();
+      startCue(next.cue, triggerSource: 'queue');
+      return;
+    }
+
+    // One-shot cues always hand off to fallback once their transport ends.
+    if (finishedCue != null && finishedCue.cueType == CueType.oneShot) {
+      returnToFallback(triggerSource: 'auto_oneshot_finished');
+      return;
+    }
+
+    // Locked or regular cues with an empty queue also fall back to the safe loop.
+    returnToFallback(triggerSource: 'auto_finished');
   }
 
   void _startTicker() {
@@ -291,25 +346,129 @@ class PlaybackService extends ChangeNotifier {
     required String? cueId,
     required String result,
     Map<String, dynamic>? metadata,
+    String? errorMessage,
   }) {
-    _logs.add(
-      LiveEventLog(
-        id: 'log_${DateTime.now().microsecondsSinceEpoch}',
-        projectId: _projectId,
-        cueId: cueId,
-        actionType: actionType,
-        timestamp: DateTime.now(),
-        operatorName: 'system',
-        result: result,
-        errorMessage: null,
-        metadata: metadata,
-      ),
+    final log = LiveEventLog(
+      id: 'log_${DateTime.now().microsecondsSinceEpoch}',
+      projectId: _projectId,
+      cueId: cueId,
+      actionType: actionType,
+      timestamp: DateTime.now(),
+      operatorName: 'system',
+      result: result,
+      errorMessage: errorMessage,
+      metadata: metadata,
     );
+
+    _logs.add(log);
+    unawaited(_liveLogRepository.appendLog(log));
+  }
+
+  Future<void> _playCueInVlc(Cue cue, {required String triggerSource}) async {
+    try {
+      final filePath = await _resolveMediaPath(cue);
+      if (filePath == null || filePath.isEmpty) {
+        debugPrint('[PlaybackService] No media path found for cue ${cue.title} (${cue.mediaAssetId}). VLC playback skipped.');
+        _playbackState = _playbackState.copyWith(
+          lastError: 'Kein Dateipfad für Cue "${cue.title}" gefunden.',
+        );
+        notifyListeners();
+        _appendLog(
+          actionType: LiveActionType.triggerCue,
+          cueId: cue.id,
+          result: 'vlc_skipped',
+          metadata: {
+            'triggerSource': triggerSource,
+            'reason': 'missing_media_path',
+            'mediaAssetId': cue.mediaAssetId,
+          },
+        );
+        return;
+      }
+
+      await _vlcService.setFullscreenOutput();
+      await _vlcService.playFile(filePath);
+
+      _playbackState = _playbackState.copyWith(lastError: null);
+      notifyListeners();
+
+      debugPrint('[PlaybackService] VLC playing file: $filePath');
+      _appendLog(
+        actionType: LiveActionType.triggerCue,
+        cueId: cue.id,
+        result: 'vlc_playing',
+        metadata: {
+          'triggerSource': triggerSource,
+          'filePath': filePath,
+          'vlcRunning': _vlcService.isRunning(),
+        },
+      );
+    } catch (error) {
+      debugPrint('[PlaybackService] VLC playback failed: $error');
+      _playbackState = _playbackState.copyWith(lastError: '$error');
+      notifyListeners();
+      _appendLog(
+        actionType: LiveActionType.triggerCue,
+        cueId: cue.id,
+        result: 'vlc_error',
+        errorMessage: '$error',
+        metadata: {
+          'triggerSource': triggerSource,
+          'mediaAssetId': cue.mediaAssetId,
+        },
+      );
+    }
+  }
+
+  Future<void> _stopVlcPlayback({required String triggerSource}) async {
+    try {
+      final activeCueId = _playbackState.currentCue?.id;
+      await _vlcService.stop();
+      debugPrint('[PlaybackService] VLC stopped.');
+      _appendLog(
+        actionType: LiveActionType.stopCue,
+        cueId: activeCueId,
+        result: 'vlc_stopped',
+        metadata: {
+          'triggerSource': triggerSource,
+        },
+      );
+    } catch (error) {
+      debugPrint('[PlaybackService] VLC stop failed: $error');
+      _playbackState = _playbackState.copyWith(lastError: '$error');
+      notifyListeners();
+      _appendLog(
+        actionType: LiveActionType.stopCue,
+        cueId: _playbackState.currentCue?.id,
+        result: 'vlc_stop_error',
+        errorMessage: '$error',
+        metadata: {
+          'triggerSource': triggerSource,
+        },
+      );
+    }
+  }
+
+  Future<String?> _resolveMediaPath(Cue cue) async {
+    // Demo/live-control cues may not yet reference a persisted media asset.
+    // In that case the service logs and skips transport instead of breaking playback state.
+    if (cue.mediaAssetId.trim().isEmpty) {
+      return null;
+    }
+
+    final mediaAsset = await _mediaRepository.getMediaAssetById(cue.mediaAssetId);
+    final filePath = mediaAsset?.filePath.trim();
+    if (filePath == null || filePath.isEmpty) {
+      return null;
+    }
+
+    return filePath;
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
+    unawaited(_vlcService.stop());
     super.dispose();
   }
 }
