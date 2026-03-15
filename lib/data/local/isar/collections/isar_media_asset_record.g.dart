@@ -16,7 +16,7 @@ extension GetIsarMediaAssetRecordCollection on Isar {
 
 const IsarMediaAssetRecordSchema = CollectionSchema(
   name: r'IsarMediaAssetRecord',
-  id: 3426666179150265240,
+  id: 3426666179150265,
   properties: {
     r'createdAt': PropertySchema(
       id: 0,
@@ -46,7 +46,7 @@ const IsarMediaAssetRecordSchema = CollectionSchema(
   idName: r'id',
   indexes: {
     r'externalId': IndexSchema(
-      id: 8629824136592255998,
+      id: 8629824136592255,
       name: r'externalId',
       unique: true,
       replace: true,

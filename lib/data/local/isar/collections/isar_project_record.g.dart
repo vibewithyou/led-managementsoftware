@@ -15,7 +15,7 @@ extension GetIsarProjectRecordCollection on Isar {
 
 const IsarProjectRecordSchema = CollectionSchema(
   name: r'IsarProjectRecord',
-  id: 2027263000086319496,
+  id: 2027263000086319,
   properties: {
     r'createdAt': PropertySchema(
       id: 0,
@@ -45,7 +45,7 @@ const IsarProjectRecordSchema = CollectionSchema(
   idName: r'id',
   indexes: {
     r'externalId': IndexSchema(
-      id: 8629824136592255998,
+      id: 8629824136592255,
       name: r'externalId',
       unique: true,
       replace: true,

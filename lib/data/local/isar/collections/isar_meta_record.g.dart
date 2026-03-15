@@ -15,7 +15,7 @@ extension GetIsarMetaRecordCollection on Isar {
 
 const IsarMetaRecordSchema = CollectionSchema(
   name: r'IsarMetaRecord',
-  id: 2236478938131983115,
+  id: 2236478938131983,
   properties: {
     r'schemaVersion': PropertySchema(
       id: 0,

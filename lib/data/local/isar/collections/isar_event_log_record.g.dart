@@ -16,7 +16,7 @@ extension GetIsarEventLogRecordCollection on Isar {
 
 const IsarEventLogRecordSchema = CollectionSchema(
   name: r'IsarEventLogRecord',
-  id: -5499553930162320878,
+  id: -5499553930162320,
   properties: {
     r'createdAt': PropertySchema(
       id: 0,
@@ -46,7 +46,7 @@ const IsarEventLogRecordSchema = CollectionSchema(
   idName: r'id',
   indexes: {
     r'externalId': IndexSchema(
-      id: 8629824136592255998,
+      id: 8629824136592255,
       name: r'externalId',
       unique: true,
       replace: true,

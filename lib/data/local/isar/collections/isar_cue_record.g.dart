@@ -15,7 +15,7 @@ extension GetIsarCueRecordCollection on Isar {
 
 const IsarCueRecordSchema = CollectionSchema(
   name: r'IsarCueRecord',
-  id: 7096288223278105909,
+  id: 7096288223278105,
   properties: {
     r'createdAt': PropertySchema(
       id: 0,
@@ -45,7 +45,7 @@ const IsarCueRecordSchema = CollectionSchema(
   idName: r'id',
   indexes: {
     r'externalId': IndexSchema(
-      id: 8629824136592255998,
+      id: 8629824136592255,
       name: r'externalId',
       unique: true,
       replace: true,

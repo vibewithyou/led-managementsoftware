@@ -16,7 +16,7 @@ extension GetIsarLineupEntryRecordCollection on Isar {
 
 const IsarLineupEntryRecordSchema = CollectionSchema(
   name: r'IsarLineupEntryRecord',
-  id: -4204609334028188856,
+  id: -4204609334028188,
   properties: {
     r'createdAt': PropertySchema(
       id: 0,
@@ -46,7 +46,7 @@ const IsarLineupEntryRecordSchema = CollectionSchema(
   idName: r'id',
   indexes: {
     r'externalId': IndexSchema(
-      id: 8629824136592255998,
+      id: 8629824136592255,
       name: r'externalId',
       unique: true,
       replace: true,
