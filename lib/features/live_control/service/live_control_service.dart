@@ -4,7 +4,7 @@ class LiveControlService {
   const LiveControlService();
 
   String loadFallbackCueLabel() {
-    return 'Fallback Safe Loop';
+    return 'Fallback';
   }
 
   int fallbackDurationFor(LiveActionConfig action) {

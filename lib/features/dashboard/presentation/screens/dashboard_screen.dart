@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:led_management_software/core/constants/app_spacing.dart';
 import 'package:led_management_software/core/theme/app_colors.dart';
+import 'package:led_management_software/app/routing/app_route.dart';
 import 'package:led_management_software/features/dashboard/controller/dashboard_controller.dart';
 import 'package:led_management_software/features/dashboard/widgets/dashboard_kpi_card.dart';
 import 'package:led_management_software/shared/widgets/layout/page_header.dart';
@@ -78,6 +79,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
+                  if (_controller.isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
                   final crossAxisCount = constraints.maxWidth > 1200
                       ? 4
                       : constraints.maxWidth > 800
@@ -110,7 +114,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               child: AppPanel(
                                 title: 'Systemwarnungen',
                                 child: alerts.isEmpty
-                                    ? const Center(child: Text('Keine Warnungen. System bereit.'))
+                                    ? const Center(child: Text('Keine Warnungen. System bereit für den Livebetrieb.'))
                                     : ListView.separated(
                                         itemCount: alerts.length,
                                         itemBuilder: (_, index) {
@@ -150,6 +154,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 title: 'Nächste Live-Relevanz',
                                 child: ListView(
                                   children: [
+                                    if (!_controller.hasActiveProject)
+                                      Container(
+                                        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                                        padding: const EdgeInsets.all(AppSpacing.sm),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.surfaceMuted,
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(color: AppColors.border),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Setup-Empfehlung',
+                                              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                                            ),
+                                            const SizedBox(height: AppSpacing.xs),
+                                            const Text('1) Projekt aktiv setzen\n2) Fallback + Sponsor-Loop zuweisen\n3) Live-Steuerung prüfen'),
+                                            const SizedBox(height: AppSpacing.sm),
+                                            OutlinedButton.icon(
+                                              onPressed: () => Navigator.of(context).pushNamed(AppRoute.projects.path),
+                                              icon: const Icon(Icons.folder_open_rounded),
+                                              label: const Text('Zu Projekte wechseln'),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ListTile(
                                       contentPadding: EdgeInsets.zero,
                                       title: const Text('Aktueller Cue'),

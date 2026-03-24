@@ -44,6 +44,9 @@ class LiveControlController extends ChangeNotifier {
       vlcService: VlcService(
         executablePath: _settingsService.vlcExecutablePath.trim().isEmpty ? null : _settingsService.vlcExecutablePath.trim(),
       ),
+      strictSponsorLock: _settingsService.strictSponsorLock,
+      clearQueueOnStop: _settingsService.clearQueueOnStop,
+      fallbackBehavior: _settingsService.fallbackBehavior,
     );
     _playbackService.addListener(_onPlaybackChanged);
     _settingsService.addListener(_onSettingsChanged);
@@ -64,7 +67,7 @@ class LiveControlController extends ChangeNotifier {
   List<LiveActionConfig> _actions = const [];
   PlaybackState _playbackState = PlaybackState.initial(projectId: 'live_project');
   List<LiveCueModel> _queue = const [];
-  String _fallbackCueLabel = 'Fallback Safe Loop';
+  String _fallbackCueLabel = 'Fallback';
   List<LiveEventLog> _logs = const [];
 
   PlaybackState get playbackState => _playbackState;
@@ -84,6 +87,8 @@ class LiveControlController extends ChangeNotifier {
   String get transportMessage => _playbackState.transportMessage;
 
   bool get hasTransportError => transportStatus == TransportStatus.error || transportStatus == TransportStatus.fileMissing;
+  bool get useLargeControls => _settingsService.operatorLargeControls;
+  bool get reduceAnimations => _settingsService.operatorReducedAnimations;
 
   String get lockedSponsorLabel {
     final cue = _playbackService.playbackState.currentCue;
@@ -112,7 +117,7 @@ class LiveControlController extends ChangeNotifier {
 
     switch (action.actionType) {
       case LiveActionType.stopCue:
-        _playbackService.stopCue(triggerSource: 'operator_stop');
+        _playbackService.stopCue(clearQueue: _settingsService.clearQueueOnStop, triggerSource: 'operator_stop');
         return;
       case LiveActionType.blackScreenOn:
         _playbackService.startCue(
@@ -151,6 +156,11 @@ class LiveControlController extends ChangeNotifier {
 
   void _onSettingsChanged() {
     _actions = _sortedEnabledActions(_settingsService.loadLiveActions());
+    _playbackService.updateRuntimeConfig(
+      strictSponsorLock: _settingsService.strictSponsorLock,
+      clearQueueOnStop: _settingsService.clearQueueOnStop,
+      fallbackBehavior: _settingsService.fallbackBehavior,
+    );
     unawaited(_registerGlobalHotkeys());
     notifyListeners();
   }

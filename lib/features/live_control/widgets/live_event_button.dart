@@ -12,11 +12,15 @@ class LiveEventButton extends StatefulWidget {
   const LiveEventButton({
     required this.action,
     required this.onPressed,
+    this.large = false,
+    this.reducedMotion = false,
     super.key,
   });
 
   final LiveActionConfig action;
   final VoidCallback onPressed;
+  final bool large;
+  final bool reducedMotion;
 
   @override
   State<LiveEventButton> createState() => _LiveEventButtonState();
@@ -38,7 +42,9 @@ class _LiveEventButtonState extends State<LiveEventButton> {
         : _hovered
             ? AppColors.surfaceMuted
             : AppColors.surface;
-    final scale = _pressed ? 0.992 : _hovered ? 1.006 : 1.0;
+    final scale = widget.reducedMotion ? 1.0 : (_pressed ? 0.992 : _hovered ? 1.006 : 1.0);
+    final tilePadding = widget.large ? AppSpacing.mdLg : AppSpacing.md;
+    final iconSize = widget.large ? 52.0 : 44.0;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -53,13 +59,13 @@ class _LiveEventButtonState extends State<LiveEventButton> {
         onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
         child: TweenAnimationBuilder<double>(
-          duration: AppDurations.fast,
+          duration: widget.reducedMotion ? Duration.zero : AppDurations.fast,
           tween: Tween(begin: 1, end: scale),
           builder: (context, value, child) => Transform.scale(scale: value, child: child),
           child: AnimatedContainer(
-            duration: AppDurations.medium,
+            duration: widget.reducedMotion ? Duration.zero : AppDurations.medium,
             curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.all(AppSpacing.md),
+            padding: EdgeInsets.all(tilePadding),
             decoration: BoxDecoration(
               color: background,
               borderRadius: BorderRadius.circular(AppRadius.md),
@@ -69,9 +75,9 @@ class _LiveEventButtonState extends State<LiveEventButton> {
             child: Row(
               children: [
                 AnimatedContainer(
-                  duration: AppDurations.medium,
-                  width: 44,
-                  height: 44,
+                  duration: widget.reducedMotion ? Duration.zero : AppDurations.medium,
+                  width: iconSize,
+                  height: iconSize,
                   decoration: BoxDecoration(
                     color: accent.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(AppRadius.sm),

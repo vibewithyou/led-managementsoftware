@@ -55,7 +55,7 @@ class _LiveControlScreenState extends State<LiveControlScreen> with SingleTicker
             const SizedBox(height: AppSpacing.md),
             if (_controller.sponsorLockedRunning) ...[
               FadeTransition(
-                opacity: _pulseAnimation,
+                opacity: _controller.reduceAnimations ? const AlwaysStoppedAnimation<double>(1) : _pulseAnimation,
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
@@ -163,6 +163,8 @@ class _LiveControlScreenState extends State<LiveControlScreen> with SingleTicker
                                                   padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                                                   child: LiveEventButton(
                                                     action: action,
+                                                    large: _controller.useLargeControls,
+                                                    reducedMotion: _controller.reduceAnimations,
                                                     onPressed: () => _controller.triggerAction(action),
                                                   ),
                                                 ),
@@ -263,7 +265,7 @@ class _LiveControlScreenState extends State<LiveControlScreen> with SingleTicker
 
   Widget _systemStatusStrip(BuildContext context) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
+      duration: _controller.reduceAnimations ? Duration.zero : const Duration(milliseconds: 220),
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
       decoration: BoxDecoration(

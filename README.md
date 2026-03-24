@@ -2,6 +2,17 @@
 
 Desktop-first Flutter MVP für Live-Regie und LED-Banden-Steuerung.
 
+## MVP-Stand (aktuell)
+
+Der MVP deckt aktuell folgende Kernflows ab:
+
+- **Projekte verwalten** und aktives Projekt setzen.
+- **Clips importieren** (inkl. Metadaten/Cue-Typ) und in der Medienbibliothek prüfen.
+- **Live-Steuerung** mit Queue, Fallback, Sponsor-Lock und globalen Hotkeys.
+- **Intro-Player-Steuerung** für Heim/Gast-Aufstellungen.
+- **Dashboard** mit Live-KPIs, Warnungen und Setup-Hinweisen.
+- **Settings** mit produktionsnahen Operator-/Playback-Optionen (lokal persistiert).
+
 ## Lokale Persistenz (Isar)
 
 Die App nutzt jetzt Isar als lokale Datenbank (Windows/Desktop kompatibel).

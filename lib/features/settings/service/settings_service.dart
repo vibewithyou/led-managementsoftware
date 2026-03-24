@@ -9,12 +9,18 @@ import 'package:led_management_software/features/live_control/model/live_action_
 import 'package:led_management_software/features/settings/model/hotkey_binding_model.dart';
 import 'package:led_management_software/features/settings/model/setting_item_model.dart';
 
+enum FallbackBehavior {
+  sponsorLoop,
+  stayIdle,
+}
+
 class SettingsService extends ChangeNotifier {
   SettingsService._();
 
   static final SettingsService instance = SettingsService._();
 
   static const List<String> availableHotkeys = <String>[
+    '—',
     'F1',
     'F2',
     'F3',
@@ -33,27 +39,83 @@ class SettingsService extends ChangeNotifier {
   List<LiveActionConfig>? _liveActionsCache;
   String _vlcExecutablePath = '';
   String? _lastVlcError;
+  bool _clearQueueOnStop = false;
+  bool _strictSponsorLock = true;
+  bool _operatorLargeControls = false;
+  bool _operatorReducedAnimations = false;
+  FallbackBehavior _fallbackBehavior = FallbackBehavior.sponsorLoop;
 
   String get vlcExecutablePath {
-    _ensureLiveActionsLoaded();
+    _ensureLoaded();
     return _vlcExecutablePath;
   }
 
   String? get lastVlcError {
-    _ensureLiveActionsLoaded();
+    _ensureLoaded();
     return _lastVlcError;
   }
 
+  bool get clearQueueOnStop {
+    _ensureLoaded();
+    return _clearQueueOnStop;
+  }
+
+  bool get strictSponsorLock {
+    _ensureLoaded();
+    return _strictSponsorLock;
+  }
+
+  bool get operatorLargeControls {
+    _ensureLoaded();
+    return _operatorLargeControls;
+  }
+
+  bool get operatorReducedAnimations {
+    _ensureLoaded();
+    return _operatorReducedAnimations;
+  }
+
+  FallbackBehavior get fallbackBehavior {
+    _ensureLoaded();
+    return _fallbackBehavior;
+  }
+
   List<SettingItemModel> loadPlaybackSettings() {
-    return const [
-      SettingItemModel(title: 'VLC Auto-Reconnect', description: 'Verbindung bei Engine-Verlust automatisch neu aufbauen.', enabled: true),
-      SettingItemModel(title: 'Failover auf Backup-Ausgabe', description: 'Bei Fehler auf sekundären Output wechseln.', enabled: true),
-      SettingItemModel(title: 'Sicherheits-Bestätigung bei Stop-All', description: 'Globale Stop-Befehle mit Bestätigung schützen.', enabled: true),
+    return [
+      SettingItemModel(
+        id: 'clear_queue_on_stop',
+        title: 'Queue nach Stop löschen',
+        description: 'Entfernt wartende Cues automatisch, wenn Stop ausgelöst wird.',
+        enabled: clearQueueOnStop,
+      ),
+      SettingItemModel(
+        id: 'strict_sponsor_lock',
+        title: 'Sponsor-Lock strikt',
+        description: 'Während Locked Sponsor läuft, werden weitere Aktionen nur in die Queue gestellt.',
+        enabled: strictSponsorLock,
+      ),
+    ];
+  }
+
+  List<SettingItemModel> loadOperatorSettings() {
+    return [
+      SettingItemModel(
+        id: 'large_controls',
+        title: 'Große Bedienflächen',
+        description: 'Vergrößert Trigger-Flächen für Touch/Stressbetrieb.',
+        enabled: operatorLargeControls,
+      ),
+      SettingItemModel(
+        id: 'reduced_animations',
+        title: 'Animationen reduziert',
+        description: 'Reduziert visuelle Effekte für ruhigeren Betrieb und bessere Lesbarkeit.',
+        enabled: operatorReducedAnimations,
+      ),
     ];
   }
 
   List<LiveActionConfig> loadLiveActions() {
-    _ensureLiveActionsLoaded();
+    _ensureLoaded();
     return List<LiveActionConfig>.unmodifiable(_liveActionsCache!);
   }
 
@@ -63,67 +125,139 @@ class SettingsService extends ChangeNotifier {
           (action) => HotkeyBindingModel(
             eventLabel: action.label,
             description: _descriptionFor(action),
-            shortcutLabel: action.hotkey ?? '—',
+            shortcutLabel: _displayHotkey(action.hotkey),
           ),
         )
         .toList(growable: false);
   }
 
+  Map<String, List<String>> hotkeyConflicts() {
+    final assignments = <String, List<String>>{};
+    for (final action in loadLiveActions()) {
+      final key = _normalizeHotkey(action.hotkey);
+      if (key == null) {
+        continue;
+      }
+      assignments.putIfAbsent(key, () => []).add(action.label);
+    }
+
+    return {
+      for (final entry in assignments.entries)
+        if (entry.value.length > 1) entry.key: List<String>.unmodifiable(entry.value),
+    };
+  }
+
   Map<String, String> currentHotkeyMap() {
     return {
       for (final action in loadLiveActions())
-        if (action.enabled && action.hotkey != null && action.hotkey!.isNotEmpty) action.label: action.hotkey!,
+        if (action.enabled && _normalizeHotkey(action.hotkey) != null) action.label: _normalizeHotkey(action.hotkey)!,
     };
   }
 
   String hotkeyForEvent(String eventLabel) {
     final action = loadLiveActions().where((item) => item.label == eventLabel).cast<LiveActionConfig?>().firstWhere((item) => item != null, orElse: () => null);
-    return action?.hotkey ?? '—';
+    return _displayHotkey(action?.hotkey);
   }
 
   void updateHotkey(String eventLabel, String shortcutLabel) {
-    _ensureLiveActionsLoaded();
+    _ensureLoaded();
     final actions = _liveActionsCache!;
     final index = actions.indexWhere((item) => item.label == eventLabel);
     if (index < 0) {
       return;
     }
 
+    final nextHotkey = _normalizeHotkey(shortcutLabel);
     final current = actions[index];
-    if (current.hotkey == shortcutLabel) {
+    final currentHotkey = _normalizeHotkey(current.hotkey);
+    if (currentHotkey == nextHotkey) {
       return;
     }
 
-    final conflictIndex = actions.indexWhere((item) => item.id != current.id && item.hotkey == shortcutLabel);
+    final conflictIndex = actions.indexWhere((item) => item.id != current.id && _normalizeHotkey(item.hotkey) == nextHotkey);
     if (conflictIndex >= 0) {
-      actions[conflictIndex] = actions[conflictIndex].copyWith(hotkey: current.hotkey);
+      actions[conflictIndex] = actions[conflictIndex].copyWith(hotkey: currentHotkey);
     }
 
-    actions[index] = current.copyWith(hotkey: shortcutLabel);
-    _persistLiveActions();
+    actions[index] = current.copyWith(hotkey: nextHotkey);
+    _persist();
+    notifyListeners();
+  }
+
+  void updatePlaybackToggle(String settingId, bool enabled) {
+    _ensureLoaded();
+    var changed = false;
+    switch (settingId) {
+      case 'clear_queue_on_stop':
+        changed = _clearQueueOnStop != enabled;
+        _clearQueueOnStop = enabled;
+        break;
+      case 'strict_sponsor_lock':
+        changed = _strictSponsorLock != enabled;
+        _strictSponsorLock = enabled;
+        break;
+      default:
+        return;
+    }
+
+    if (changed) {
+      _persist();
+      notifyListeners();
+    }
+  }
+
+  void updateOperatorToggle(String settingId, bool enabled) {
+    _ensureLoaded();
+    var changed = false;
+    switch (settingId) {
+      case 'large_controls':
+        changed = _operatorLargeControls != enabled;
+        _operatorLargeControls = enabled;
+        break;
+      case 'reduced_animations':
+        changed = _operatorReducedAnimations != enabled;
+        _operatorReducedAnimations = enabled;
+        break;
+      default:
+        return;
+    }
+
+    if (changed) {
+      _persist();
+      notifyListeners();
+    }
+  }
+
+  void updateFallbackBehavior(FallbackBehavior behavior) {
+    _ensureLoaded();
+    if (_fallbackBehavior == behavior) {
+      return;
+    }
+    _fallbackBehavior = behavior;
+    _persist();
     notifyListeners();
   }
 
   void updateLiveActionEnabled(String actionId, bool enabled) {
-    _ensureLiveActionsLoaded();
+    _ensureLoaded();
     _liveActionsCache = _liveActionsCache!
         .map((item) => item.id == actionId ? item.copyWith(enabled: enabled) : item)
         .toList(growable: false);
-    _persistLiveActions();
+    _persist();
     notifyListeners();
   }
 
   void updateLiveActionColor(String actionId, LiveActionColorSemantic color) {
-    _ensureLiveActionsLoaded();
+    _ensureLoaded();
     _liveActionsCache = _liveActionsCache!
         .map((item) => item.id == actionId ? item.copyWith(color: color) : item)
         .toList(growable: false);
-    _persistLiveActions();
+    _persist();
     notifyListeners();
   }
 
   void reorderLiveActions(List<String> orderedIds) {
-    _ensureLiveActionsLoaded();
+    _ensureLoaded();
     final byId = {for (final action in _liveActionsCache!) action.id: action};
     final reordered = <LiveActionConfig>[];
 
@@ -141,34 +275,34 @@ class SettingsService extends ChangeNotifier {
     }
 
     _liveActionsCache = reordered;
-    _persistLiveActions();
+    _persist();
     notifyListeners();
   }
 
   void updateVlcExecutablePath(String value) {
-    _ensureLiveActionsLoaded();
+    _ensureLoaded();
     final normalized = value.trim();
     if (_vlcExecutablePath == normalized) {
       return;
     }
     _vlcExecutablePath = normalized;
-    _persistLiveActions();
+    _persist();
     notifyListeners();
   }
 
   void setLastVlcError(String? message) {
-    _ensureLiveActionsLoaded();
+    _ensureLoaded();
     final normalized = message?.trim();
     final next = normalized == null || normalized.isEmpty ? null : normalized;
     if (_lastVlcError == next) {
       return;
     }
     _lastVlcError = next;
-    _persistLiveActions();
+    _persist();
     notifyListeners();
   }
 
-  void _ensureLiveActionsLoaded() {
+  void _ensureLoaded() {
     if (_liveActionsCache != null) {
       return;
     }
@@ -177,9 +311,7 @@ class SettingsService extends ChangeNotifier {
 
     if (!_storageFile.existsSync()) {
       _liveActionsCache = seeded;
-      _vlcExecutablePath = '';
-      _lastVlcError = null;
-      _persistLiveActions();
+      _persist();
       return;
     }
 
@@ -191,29 +323,45 @@ class SettingsService extends ChangeNotifier {
           .toList(growable: false);
       _vlcExecutablePath = (payload['vlcExecutablePath'] as String? ?? '').trim();
       _lastVlcError = (payload['lastVlcError'] as String?)?.trim();
+      _clearQueueOnStop = payload['clearQueueOnStop'] as bool? ?? false;
+      _strictSponsorLock = payload['strictSponsorLock'] as bool? ?? true;
+      _operatorLargeControls = payload['operatorLargeControls'] as bool? ?? false;
+      _operatorReducedAnimations = payload['operatorReducedAnimations'] as bool? ?? false;
+      final fallbackRaw = payload['fallbackBehavior'] as String?;
+      _fallbackBehavior = fallbackRaw == FallbackBehavior.stayIdle.name ? FallbackBehavior.stayIdle : FallbackBehavior.sponsorLoop;
 
       if (items.isEmpty) {
         _liveActionsCache = seeded;
-        _persistLiveActions();
+        _persist();
         return;
       }
 
       _liveActionsCache = _mergeMissingDefaults(items, seeded);
-      _persistLiveActions();
+      _persist();
     } catch (_) {
       _liveActionsCache = seeded;
       _vlcExecutablePath = '';
       _lastVlcError = null;
-      _persistLiveActions();
+      _clearQueueOnStop = false;
+      _strictSponsorLock = true;
+      _operatorLargeControls = false;
+      _operatorReducedAnimations = false;
+      _fallbackBehavior = FallbackBehavior.sponsorLoop;
+      _persist();
     }
   }
 
-  void _persistLiveActions() {
+  void _persist() {
     final payload = <String, dynamic>{
-      'version': 1,
+      'version': 2,
       'liveActions': _liveActionsCache?.map((item) => item.toJson()).toList(growable: false) ?? const [],
       'vlcExecutablePath': _vlcExecutablePath,
       'lastVlcError': _lastVlcError,
+      'clearQueueOnStop': _clearQueueOnStop,
+      'strictSponsorLock': _strictSponsorLock,
+      'operatorLargeControls': _operatorLargeControls,
+      'operatorReducedAnimations': _operatorReducedAnimations,
+      'fallbackBehavior': _fallbackBehavior.name,
     };
     _storageFile.writeAsStringSync(jsonEncode(payload));
   }
@@ -268,6 +416,18 @@ class SettingsService extends ChangeNotifier {
       default:
         return 'Live-Aktion';
     }
+  }
+
+  String? _normalizeHotkey(String? hotkey) {
+    final normalized = hotkey?.trim().toUpperCase();
+    if (normalized == null || normalized.isEmpty || normalized == '—') {
+      return null;
+    }
+    return normalized;
+  }
+
+  String _displayHotkey(String? hotkey) {
+    return _normalizeHotkey(hotkey) ?? '—';
   }
 
   List<LiveActionConfig> _seedDefaultLiveActions() {

@@ -16,6 +16,7 @@ import 'package:led_management_software/domain/enums/transport_status.dart';
 import 'package:led_management_software/domain/repositories/live_log_repository.dart';
 import 'package:led_management_software/domain/repositories/media_repository.dart';
 import 'package:led_management_software/data/services/vlc_bridge_service.dart';
+import 'package:led_management_software/features/settings/service/settings_service.dart';
 
 /// Central playback engine for locked sponsor behavior, queue handling and fallback logic.
 class PlaybackService extends ChangeNotifier {
@@ -26,12 +27,18 @@ class PlaybackService extends ChangeNotifier {
     LiveLogRepository? liveLogRepository,
     MediaRepository? mediaRepository,
     VlcService? vlcService,
+    bool strictSponsorLock = true,
+    bool clearQueueOnStop = false,
+    FallbackBehavior fallbackBehavior = FallbackBehavior.sponsorLoop,
   })  : _projectId = projectId,
         _fallbackCue = fallbackCue,
         _cueDurationsMs = cueDurationsMs,
         _liveLogRepository = liveLogRepository ?? LiveLogRepositoryImpl(),
         _mediaRepository = mediaRepository ?? MediaRepositoryImpl(),
         _vlcService = vlcService ?? VlcService(),
+        _strictSponsorLock = strictSponsorLock,
+        _clearQueueOnStop = clearQueueOnStop,
+        _fallbackBehavior = fallbackBehavior,
         _playbackState = PlaybackState.initial(projectId: projectId),
         _queueState = QueueState.initial(projectId: projectId) {
     _vlcStatusSubscription = _vlcService.statusStream.listen(_handleVlcStatusUpdate);
@@ -44,6 +51,9 @@ class PlaybackService extends ChangeNotifier {
   final LiveLogRepository _liveLogRepository;
   final MediaRepository _mediaRepository;
   final VlcService _vlcService;
+  bool _strictSponsorLock;
+  bool _clearQueueOnStop;
+  FallbackBehavior _fallbackBehavior;
 
   PlaybackState _playbackState;
   QueueState _queueState;
@@ -70,6 +80,16 @@ class PlaybackService extends ChangeNotifier {
 
   Cue get fallbackCue => _fallbackCue;
 
+  void updateRuntimeConfig({
+    required bool strictSponsorLock,
+    required bool clearQueueOnStop,
+    required FallbackBehavior fallbackBehavior,
+  }) {
+    _strictSponsorLock = strictSponsorLock;
+    _clearQueueOnStop = clearQueueOnStop;
+    _fallbackBehavior = fallbackBehavior;
+  }
+
   /// Starts playback for a cue and mirrors that state back into the UI.
   ///
   /// Flow:
@@ -82,7 +102,7 @@ class PlaybackService extends ChangeNotifier {
       return;
     }
 
-    if (_isLockedCueRunning()) {
+    if (_isLockedCueRunning() && (_strictSponsorLock || !cue.canInterrupt)) {
       queueCue(cue, reason: 'locked_running');
       return;
     }
@@ -172,11 +192,11 @@ class PlaybackService extends ChangeNotifier {
   /// Edge cases:
   /// - calling stop while idle is safe
   /// - queue clearing remains optional because operators may want to preserve it
-  void stopCue({bool clearQueue = false, String triggerSource = 'manual'}) {
+  void stopCue({bool? clearQueue, String triggerSource = 'manual'}) {
     _ticker?.cancel();
     _currentExecution = null;
 
-    if (clearQueue) {
+    if (clearQueue ?? _clearQueueOnStop) {
       _queueState = _queueState.copyWith(entries: const [], updatedAt: DateTime.now());
       _appendLog(
         actionType: LiveActionType.queueClear,
@@ -315,8 +335,13 @@ class PlaybackService extends ChangeNotifier {
       return;
     }
 
-    // Locked or regular cues with an empty queue also fall back to the safe loop.
-    returnToFallback(triggerSource: 'auto_finished');
+    // Locked or regular cues with an empty queue follow the configured fallback behavior.
+    if (_fallbackBehavior == FallbackBehavior.sponsorLoop) {
+      returnToFallback(triggerSource: 'auto_finished');
+      return;
+    }
+
+    stopCue(clearQueue: false, triggerSource: 'auto_finished_idle');
   }
 
   void _startTicker() {

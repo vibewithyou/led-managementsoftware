@@ -12,12 +12,19 @@ class SettingsController extends ChangeNotifier {
   final SettingsService _service;
 
   List<SettingItemModel> get playbackSettings => _service.loadPlaybackSettings();
+  List<SettingItemModel> get operatorSettings => _service.loadOperatorSettings();
 
   List<HotkeyBindingModel> get hotkeyBindings => _service.loadHotkeyBindings();
+  Map<String, List<String>> get hotkeyConflicts => _service.hotkeyConflicts();
 
   List<LiveActionConfig> get liveActions => _service.loadLiveActions();
   String get vlcExecutablePath => _service.vlcExecutablePath;
   String? get lastVlcError => _service.lastVlcError;
+  bool get strictSponsorLock => _service.strictSponsorLock;
+  bool get clearQueueOnStop => _service.clearQueueOnStop;
+  bool get largeOperatorControls => _service.operatorLargeControls;
+  bool get reducedAnimations => _service.operatorReducedAnimations;
+  FallbackBehavior get fallbackBehavior => _service.fallbackBehavior;
 
   List<String> get availableHotkeys => SettingsService.availableHotkeys;
 
@@ -45,6 +52,18 @@ class SettingsController extends ChangeNotifier {
 
   void updateVlcExecutablePath(String value) {
     _service.updateVlcExecutablePath(value);
+  }
+
+  void updatePlaybackToggle(String settingId, bool enabled) {
+    _service.updatePlaybackToggle(settingId, enabled);
+  }
+
+  void updateOperatorToggle(String settingId, bool enabled) {
+    _service.updateOperatorToggle(settingId, enabled);
+  }
+
+  void updateFallbackBehavior(FallbackBehavior behavior) {
+    _service.updateFallbackBehavior(behavior);
   }
 
   void _forwardChanges() {
