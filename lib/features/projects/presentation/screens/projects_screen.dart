@@ -3,11 +3,13 @@ import 'package:led_management_software/core/constants/app_spacing.dart';
 import 'package:led_management_software/core/theme/app_colors.dart';
 import 'package:led_management_software/core/theme/app_durations.dart';
 import 'package:led_management_software/features/projects/controller/projects_controller.dart';
+import 'package:led_management_software/features/projects/model/project_cue_option_model.dart';
 import 'package:led_management_software/features/projects/model/project_item_model.dart';
 import 'package:led_management_software/features/projects/widgets/project_card.dart';
 import 'package:led_management_software/features/projects/widgets/project_form_dialog.dart';
 import 'package:led_management_software/shared/widgets/layout/page_header.dart';
 import 'package:led_management_software/shared/widgets/surfaces/app_panel.dart';
+import 'package:led_management_software/shared/widgets/surfaces/status_badge.dart';
 
 class ProjectsScreen extends StatefulWidget {
   const ProjectsScreen({super.key});
@@ -19,13 +21,6 @@ class ProjectsScreen extends StatefulWidget {
 class _ProjectsScreenState extends State<ProjectsScreen> {
   late final ProjectsController _controller;
   bool _showList = false;
-
-  static const List<String> _mockCueIds = [
-    'cue_sponsor_01',
-    'cue_sponsor_02',
-    'cue_fallback_01',
-    'cue_fallback_02',
-  ];
 
   @override
   void initState() {
@@ -146,6 +141,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       return const Center(child: Text('Kein aktives Projekt gesetzt.'));
     }
 
+    final sponsorCue = _controller.cueById(active.sponsorLoopCueId);
+    final fallbackCue = _controller.cueById(active.fallbackCueId);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -155,17 +153,80 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         Text('Datum: ${_formatDate(active.date)}'),
         Text('Halle: ${active.venue}'),
         Text('Clips: ${active.clipCount}'),
+        const SizedBox(height: AppSpacing.md),
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: [
+            StatusBadge(
+              label: active.sponsorLoopCueId == null ? 'Sponsor Loop fehlt' : 'Sponsor Loop gesetzt',
+              type: active.sponsorLoopCueId == null ? StatusBadgeType.error : StatusBadgeType.ready,
+            ),
+            StatusBadge(
+              label: active.fallbackCueId == null ? 'Fallback fehlt' : 'Fallback gesetzt',
+              type: active.fallbackCueId == null ? StatusBadgeType.error : StatusBadgeType.ready,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _buildCueDetailCard(
+          title: 'Sponsor Loop Cue',
+          cueId: active.sponsorLoopCueId,
+          cue: sponsorCue,
+        ),
         const SizedBox(height: AppSpacing.sm),
-        Text('Sponsorloop: ${active.sponsorLoopCueId ?? '-'}'),
-        Text('Fallback Cue: ${active.fallbackCueId ?? '-'}'),
+        _buildCueDetailCard(
+          title: 'Fallback Cue',
+          cueId: active.fallbackCueId,
+          cue: fallbackCue,
+        ),
       ],
+    );
+  }
+
+  Widget _buildCueDetailCard({
+    required String title,
+    required String? cueId,
+    required ProjectCueOptionModel? cue,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: cue == null
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: AppSpacing.xs),
+                Text(cueId == null ? 'Nicht zugewiesen' : 'Clip nicht gefunden ($cueId)'),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: AppSpacing.xs),
+                Text(cue.title, style: Theme.of(context).textTheme.bodyLarge),
+                const SizedBox(height: AppSpacing.xs),
+                Text('Kategorie: ${cue.categoryLabel}'),
+                Text('Lock-Status: ${cue.lockStatusLabel}'),
+              ],
+            ),
     );
   }
 
   Future<void> _openCreateDialog() async {
     final result = await showDialog<ProjectFormResult>(
       context: context,
-      builder: (_) => const ProjectFormDialog(availableCueIds: _mockCueIds),
+      builder: (_) => ProjectFormDialog(
+        sponsorLoopOptions: _controller.sponsorLoopCueOptions,
+        fallbackOptions: _controller.fallbackCueOptions,
+      ),
     );
 
     if (result == null) {
@@ -185,7 +246,11 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   Future<void> _openEditDialog(ProjectItemModel project) async {
     final result = await showDialog<ProjectFormResult>(
       context: context,
-      builder: (_) => ProjectFormDialog(availableCueIds: _mockCueIds, initialProject: project),
+      builder: (_) => ProjectFormDialog(
+        sponsorLoopOptions: _controller.sponsorLoopCueOptions,
+        fallbackOptions: _controller.fallbackCueOptions,
+        initialProject: project,
+      ),
     );
 
     if (result == null) {
@@ -203,6 +268,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         isActive: project.isActive,
         fallbackCueId: result.fallbackCueId,
         sponsorLoopCueId: result.sponsorLoopCueId,
+        isConfigurationComplete: result.sponsorLoopCueId != null && result.fallbackCueId != null,
       ),
     );
   }

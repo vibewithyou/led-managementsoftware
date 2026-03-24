@@ -13,6 +13,7 @@ class ProjectModel {
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
+    required this.isConfigurationComplete,
   });
 
   final String id;
@@ -26,6 +27,7 @@ class ProjectModel {
   final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final bool isConfigurationComplete;
 
   factory ProjectModel.fromEntity(Project entity) {
     return ProjectModel(
@@ -40,6 +42,7 @@ class ProjectModel {
       isActive: entity.isActive,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
+      isConfigurationComplete: entity.isConfigurationComplete,
     );
   }
 
@@ -56,6 +59,7 @@ class ProjectModel {
       isActive: json['isActive'] as bool? ?? false,
       createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
       updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
+      isConfigurationComplete: json['isConfigurationComplete'] as bool? ?? ((json['fallbackCueId'] as String?) != null && (json['sponsorLoopCueId'] as String?) != null),
     );
   }
 
@@ -72,6 +76,7 @@ class ProjectModel {
       isActive: isActive,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      isConfigurationComplete: isConfigurationComplete,
     );
   }
 
@@ -88,6 +93,7 @@ class ProjectModel {
       'isActive': isActive,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'isConfigurationComplete': isConfigurationComplete,
     };
   }
 }

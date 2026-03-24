@@ -11,6 +11,7 @@ class Project {
     required this.createdAt,
     required this.updatedAt,
     required this.isActive,
+    required this.isConfigurationComplete,
   });
 
   factory Project.empty() {
@@ -27,6 +28,7 @@ class Project {
       createdAt: now,
       updatedAt: now,
       isActive: false,
+      isConfigurationComplete: false,
     );
   }
 
@@ -43,6 +45,10 @@ class Project {
       createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
       updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
       isActive: json['isActive'] as bool? ?? false,
+      isConfigurationComplete: json['isConfigurationComplete'] as bool? ?? _computeConfigurationComplete(
+        (json['fallbackCueId'] ?? json['selectedFallbackCueId']) as String?,
+        (json['sponsorLoopCueId'] ?? json['selectedSponsorLoopCueId']) as String?,
+      ),
     );
   }
 
@@ -57,6 +63,7 @@ class Project {
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isActive;
+  final bool isConfigurationComplete;
 
   Project copyWith({
     String? id,
@@ -70,6 +77,7 @@ class Project {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isActive,
+    bool? isConfigurationComplete,
   }) {
     return Project(
       id: id ?? this.id,
@@ -83,6 +91,7 @@ class Project {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isActive: isActive ?? this.isActive,
+      isConfigurationComplete: isConfigurationComplete ?? this.isConfigurationComplete,
     );
   }
 
@@ -99,6 +108,7 @@ class Project {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'isActive': isActive,
+      'isConfigurationComplete': isConfigurationComplete,
     };
   }
 
@@ -117,7 +127,8 @@ class Project {
             clipCount == other.clipCount &&
             createdAt == other.createdAt &&
             updatedAt == other.updatedAt &&
-            isActive == other.isActive;
+            isActive == other.isActive &&
+            isConfigurationComplete == other.isConfigurationComplete;
   }
 
   @override
@@ -134,8 +145,14 @@ class Project {
       createdAt,
       updatedAt,
       isActive,
+      isConfigurationComplete,
     );
   }
 }
 
 const _unset = Object();
+
+
+bool _computeConfigurationComplete(String? fallbackCueId, String? sponsorLoopCueId) {
+  return fallbackCueId != null && fallbackCueId.isNotEmpty && sponsorLoopCueId != null && sponsorLoopCueId.isNotEmpty;
+}

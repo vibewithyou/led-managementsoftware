@@ -62,6 +62,30 @@ class _ProjectCardState extends State<ProjectCard> {
                 Text('Halle: ${widget.project.venue}', style: Theme.of(context).textTheme.bodySmall),
                 const SizedBox(height: 2),
                 Text('Clips: ${widget.project.clipCount}', style: Theme.of(context).textTheme.bodySmall),
+
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    StatusBadge(
+                      label: widget.project.sponsorLoopCueId == null ? 'Sponsor fehlt' : 'Sponsor gesetzt',
+                      type: widget.project.sponsorLoopCueId == null ? StatusBadgeType.error : StatusBadgeType.ready,
+                      compact: true,
+                    ),
+                    StatusBadge(
+                      label: widget.project.fallbackCueId == null ? 'Fallback fehlt' : 'Fallback gesetzt',
+                      type: widget.project.fallbackCueId == null ? StatusBadgeType.error : StatusBadgeType.ready,
+                      compact: true,
+                    ),
+                    if (!widget.project.isConfigurationComplete)
+                      const StatusBadge(
+                        label: 'Unvollständig',
+                        type: StatusBadgeType.queued,
+                        compact: true,
+                      ),
+                  ],
+                ),
                 const Spacer(),
                 Row(
                   children: [

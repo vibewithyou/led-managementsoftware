@@ -9,6 +9,7 @@ class ProjectItemModel {
     required this.isActive,
     required this.fallbackCueId,
     required this.sponsorLoopCueId,
+    required this.isConfigurationComplete,
   });
 
   final String id;
@@ -20,4 +21,5 @@ class ProjectItemModel {
   final bool isActive;
   final String? fallbackCueId;
   final String? sponsorLoopCueId;
+  final bool isConfigurationComplete;
 }
