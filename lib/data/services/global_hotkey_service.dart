@@ -19,6 +19,12 @@ class GlobalHotkeyService {
   bool get isRegistered => _isRegistered;
 
   Future<void> initialize() async {
+    if (kIsWeb) {
+      _registeredHotkeys.clear();
+      _lastTriggeredAt.clear();
+      _isRegistered = false;
+      return;
+    }
     await hotKeyManager.unregisterAll();
     _registeredHotkeys.clear();
     _lastTriggeredAt.clear();
@@ -30,6 +36,12 @@ class GlobalHotkeyService {
     required ValueChanged<String> onTriggered,
     Duration debounceDuration = const Duration(milliseconds: 350),
   }) async {
+    if (kIsWeb) {
+      _registeredHotkeys.clear();
+      _lastTriggeredAt.clear();
+      _isRegistered = false;
+      return;
+    }
     _debounceDuration = debounceDuration;
     await unregisterAll();
 
@@ -59,6 +71,11 @@ class GlobalHotkeyService {
   }
 
   Future<void> unregisterAll() async {
+    if (kIsWeb) {
+      _registeredHotkeys.clear();
+      _isRegistered = false;
+      return;
+    }
     await hotKeyManager.unregisterAll();
     _registeredHotkeys.clear();
     _isRegistered = false;

@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:led_management_software/core/constants/app_spacing.dart';
 import 'package:led_management_software/core/theme/app_colors.dart';
 import 'package:led_management_software/core/theme/app_durations.dart';
+import 'package:led_management_software/domain/entities/media_asset_entity.dart';
 import 'package:led_management_software/domain/enums/media_category.dart';
 import 'package:led_management_software/features/media_library/controller/media_library_controller.dart';
 import 'package:led_management_software/features/media_library/widgets/media_clip_tile.dart';
+import 'package:led_management_software/features/media_library/widgets/media_edit_dialog.dart';
 import 'package:led_management_software/features/media_library/widgets/media_import_dialog.dart';
 import 'package:led_management_software/shared/utils/media_formatters.dart';
 import 'package:led_management_software/shared/widgets/inputs/search_input.dart';
@@ -147,10 +149,13 @@ class _MediaLibraryScreenState extends State<MediaLibraryScreen> {
                                           asset: asset,
                                           isSelected: _controller.selectedAsset?.id == asset.id,
                                           animateIn: isNew,
+                                          fileStatus: _controller.fileStatusFor(asset),
                                           onTap: () {
                                             _controller.selectAsset(asset);
                                             if (isNew) _controller.clearLastImportedId();
                                           },
+                                          onEdit: () => _openEditDialog(asset),
+                                          onDelete: () => _deleteAsset(asset),
                                         );
                                       },
                                     ),
@@ -227,12 +232,16 @@ class _MediaLibraryScreenState extends State<MediaLibraryScreen> {
 
   String _categoryLabel(MediaCategory category) {
     return switch (category) {
-      MediaCategory.game => 'Spiel',
+      MediaCategory.general => 'Allgemein',
+      MediaCategory.pregame => 'Vor dem Spiel',
       MediaCategory.sponsor => 'Sponsor',
-      MediaCategory.intro => 'Intro',
-      MediaCategory.fallback => 'Fallback',
+      MediaCategory.introHome => 'Intro Heim',
+      MediaCategory.introGuest => 'Intro Gast',
       MediaCategory.player => 'Spieler',
-      MediaCategory.other => 'Sonstiges',
+      MediaCategory.event => 'Event',
+      MediaCategory.halftime => 'Halbzeit',
+      MediaCategory.postgame => 'Nach dem Spiel',
+      MediaCategory.emergency => 'Notfall',
     };
   }
 
@@ -287,7 +296,7 @@ class _MediaLibraryScreenState extends State<MediaLibraryScreen> {
         tags: importResult.tags,
         sponsorName: importResult.sponsorName,
         playerName: importResult.playerName,
-        cueTypeValue: importResult.cueType.value,
+        cueTypeValue: importResult.cueType.name,
         isCueLocked: importResult.isSponsorLocked,
         isFavorite: importResult.isFavorite,
       );
@@ -327,6 +336,63 @@ class _MediaLibraryScreenState extends State<MediaLibraryScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Import fehlgeschlagen: $exception')),
+      );
+    }
+  }
+
+  Future<void> _openEditDialog(MediaAssetEntity asset) async {
+    final result = await showDialog<MediaEditResult>(
+      context: context,
+      builder: (_) => MediaEditDialog(asset: asset),
+    );
+
+    if (!mounted || result == null) {
+      return;
+    }
+
+    try {
+      await _controller.updateAsset(
+        asset: asset,
+        title: result.title,
+        category: result.category,
+        tags: result.tags,
+        cueType: result.cueType,
+        isCueLocked: result.isCueLocked,
+        isFavorite: result.isFavorite,
+        sponsorName: result.sponsorName,
+        playerName: result.playerName,
+      );
+    } catch (exception) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Bearbeitung fehlgeschlagen: $exception')),
+      );
+    }
+  }
+
+  Future<void> _deleteAsset(MediaAssetEntity asset) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Clip löschen'),
+        content: Text('"${asset.title}" wirklich löschen?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Abbrechen')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Löschen')),
+        ],
+      ),
+    );
+
+    if (!mounted || confirmed != true) {
+      return;
+    }
+
+    try {
+      await _controller.deleteAsset(asset.id);
+    } catch (exception) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Löschen fehlgeschlagen: $exception')),
       );
     }
   }

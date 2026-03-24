@@ -87,26 +87,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       : constraints.maxWidth > 800
                           ? 2
                           : 1;
-                  final rows = (kpis.length / crossAxisCount).ceil();
-                  final kpiHeight = rows * 142 + (rows - 1) * AppSpacing.md;
+                    final rows = kpis.isEmpty ? 0 : (kpis.length / crossAxisCount).ceil();
+                    final kpiHeight = rows == 0 ? 0.0 : (rows * 142 + (rows - 1) * AppSpacing.md).toDouble();
 
                   return Column(
                     children: [
-                      SizedBox(
-                        height: kpiHeight.toDouble(),
-                        child: GridView.builder(
-                          itemCount: kpis.length,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: crossAxisCount,
-                            mainAxisSpacing: AppSpacing.md,
-                            crossAxisSpacing: AppSpacing.md,
-                            childAspectRatio: 2.6,
+                      if (kpiHeight > 0) ...[
+                        SizedBox(
+                          height: kpiHeight,
+                          child: GridView.builder(
+                            itemCount: kpis.length,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: crossAxisCount,
+                              mainAxisSpacing: AppSpacing.md,
+                              crossAxisSpacing: AppSpacing.md,
+                              childAspectRatio: 2.6,
+                            ),
+                            itemBuilder: (_, index) => DashboardKpiCard(item: kpis[index]),
                           ),
-                          itemBuilder: (_, index) => DashboardKpiCard(item: kpis[index]),
                         ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
+                        const SizedBox(height: AppSpacing.md),
+                      ],
                       Expanded(
                         child: Row(
                           children: [

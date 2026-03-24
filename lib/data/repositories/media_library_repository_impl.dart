@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
 import 'package:led_management_software/data/local/isar/collections/isar_media_asset_record.dart';
 import 'package:led_management_software/data/local/isar/isar_database.dart';
@@ -15,10 +16,19 @@ class MediaLibraryRepositoryImpl implements MediaLibraryRepository {
   MediaLibraryRepositoryImpl({VideoMetadataService? metadataService})
       : _metadataService = metadataService ?? VideoMetadataService();
 
+  static final List<MediaAsset> _memoryAssets = <MediaAsset>[];
+
   final VideoMetadataService _metadataService;
+
+  bool get _useMemoryStore => kIsWeb || IsarDatabase.instance.initializationError != null;
 
   @override
   Future<List<MediaAssetEntity>> getAllAssets() async {
+    if (_useMemoryStore) {
+      _seedMemoryIfEmpty();
+      return List<MediaAsset>.from(_memoryAssets)..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    }
+
     try {
       await _seedIfEmpty();
       final isar = await IsarDatabase.instance.database;
@@ -71,6 +81,18 @@ class MediaLibraryRepositoryImpl implements MediaLibraryRepository {
 
   @override
   Future<void> saveAsset(MediaAssetEntity asset) async {
+    if (_useMemoryStore) {
+      _seedMemoryIfEmpty();
+      final nextAsset = asset is MediaAsset ? asset : MediaAsset.fromJson(asset.toJson());
+      final index = _memoryAssets.indexWhere((item) => item.id == nextAsset.id);
+      if (index >= 0) {
+        _memoryAssets[index] = nextAsset;
+      } else {
+        _memoryAssets.add(nextAsset);
+      }
+      return;
+    }
+
     try {
       final isar = await IsarDatabase.instance.database;
       await isar.writeTxn(() async {
@@ -143,6 +165,11 @@ class MediaLibraryRepositoryImpl implements MediaLibraryRepository {
   }
 
   Future<void> _seedIfEmpty() async {
+    if (_useMemoryStore) {
+      _seedMemoryIfEmpty();
+      return;
+    }
+
     final isar = await IsarDatabase.instance.database;
     final count = await isar.isarMediaAssetRecords.count();
     if (count > 0) {
@@ -211,6 +238,67 @@ class MediaLibraryRepositoryImpl implements MediaLibraryRepository {
         await isar.isarMediaAssetRecords.put(record);
       }
     });
+  }
+
+  void _seedMemoryIfEmpty() {
+    if (_memoryAssets.isNotEmpty) {
+      return;
+    }
+    _memoryAssets.addAll(_buildSeedAssets());
+  }
+
+  List<MediaAsset> _buildSeedAssets() {
+    final now = DateTime.now();
+    return [
+      MediaAsset(
+        id: 'seed_1',
+        title: 'Pregame Countdown',
+        filePath: r'D:\clips\pregame_countdown.mp4',
+        fileName: 'pregame_countdown.mp4',
+        thumbnailPath: '',
+        durationMs: 30000,
+        category: MediaCategory.pregame,
+        tags: const ['countdown', 'stadion'],
+        sponsorName: null,
+        playerName: null,
+        teamType: TeamType.neutral,
+        cueType: CueType.loop,
+        isCueLocked: false,
+        isFavorite: true,
+        createdAt: now,
+        updatedAt: now,
+        isActive: true,
+        metadataIncomplete: false,
+        fileSizeBytes: null,
+        fileExtension: 'mp4',
+        importedAt: now,
+        lastValidatedAt: now,
+      ),
+      MediaAsset(
+        id: 'seed_2',
+        title: 'Sponsor Premium Loop',
+        filePath: r'D:\clips\sponsor_premium.mov',
+        fileName: 'sponsor_premium.mov',
+        thumbnailPath: '',
+        durationMs: 20000,
+        category: MediaCategory.sponsor,
+        tags: const ['sponsor', 'loop'],
+        sponsorName: 'Muster Energie',
+        playerName: null,
+        teamType: TeamType.neutral,
+        cueType: CueType.lockedSponsor,
+        isCueLocked: true,
+        isFavorite: true,
+        createdAt: now,
+        updatedAt: now,
+        isActive: true,
+        metadataIncomplete: false,
+        fileSizeBytes: null,
+        fileExtension: 'mov',
+        importedAt: now,
+        lastValidatedAt: now,
+      ),
+    ];
   }
 
   String? _cleanOptional(String? value) {

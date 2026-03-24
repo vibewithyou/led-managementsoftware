@@ -203,7 +203,10 @@ class MediaLibraryController extends ChangeNotifier {
   void _refreshFileStatus() {
     _fileExistsByAssetId
       ..clear()
-      ..addEntries(_allAssets.map((asset) => MapEntry(asset.id, File(asset.filePath).existsSync())));
+      ..addEntries(_allAssets.map((asset) => MapEntry(
+            asset.id,
+            kIsWeb ? true : File(asset.filePath).existsSync(),
+          )));
   }
 
   void _applyFilters() {

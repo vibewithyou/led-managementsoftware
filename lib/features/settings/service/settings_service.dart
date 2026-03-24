@@ -35,7 +35,7 @@ class SettingsService extends ChangeNotifier {
     'F12',
   ];
 
-  final File _storageFile = File('.led_live_actions.json');
+  final File? _storageFile = kIsWeb ? null : File('.led_live_actions.json');
   List<LiveActionConfig>? _liveActionsCache;
   String _vlcExecutablePath = '';
   String? _lastVlcError;
@@ -309,9 +309,9 @@ class SettingsService extends ChangeNotifier {
 
     final seeded = _seedDefaultLiveActions();
 
-    if (!_storageFile.existsSync()) {
+    if (kIsWeb || !_storageFile!.existsSync()) {
       _liveActionsCache = seeded;
-      _persist();
+      if (!kIsWeb) _persist();
       return;
     }
 
@@ -332,12 +332,12 @@ class SettingsService extends ChangeNotifier {
 
       if (items.isEmpty) {
         _liveActionsCache = seeded;
-        _persist();
+        if (!kIsWeb) _persist();
         return;
       }
 
       _liveActionsCache = _mergeMissingDefaults(items, seeded);
-      _persist();
+      if (!kIsWeb) _persist();
     } catch (_) {
       _liveActionsCache = seeded;
       _vlcExecutablePath = '';
@@ -347,11 +347,12 @@ class SettingsService extends ChangeNotifier {
       _operatorLargeControls = false;
       _operatorReducedAnimations = false;
       _fallbackBehavior = FallbackBehavior.sponsorLoop;
-      _persist();
+      if (!kIsWeb) _persist();
     }
   }
 
   void _persist() {
+    if (kIsWeb) return;
     final payload = <String, dynamic>{
       'version': 2,
       'liveActions': _liveActionsCache?.map((item) => item.toJson()).toList(growable: false) ?? const [],
@@ -363,11 +364,11 @@ class SettingsService extends ChangeNotifier {
       'operatorReducedAnimations': _operatorReducedAnimations,
       'fallbackBehavior': _fallbackBehavior.name,
     };
-    _storageFile.writeAsStringSync(jsonEncode(payload));
+    _storageFile!.writeAsStringSync(jsonEncode(payload));
   }
 
   Map<String, dynamic> _readPayload() {
-    final raw = jsonDecode(_storageFile.readAsStringSync());
+    final raw = jsonDecode(_storageFile!.readAsStringSync());
     if (raw is Map<String, dynamic>) {
       return raw;
     }

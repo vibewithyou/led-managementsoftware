@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
 import 'package:led_management_software/data/local/isar/collections/isar_event_log_record.dart';
 import 'package:led_management_software/data/local/isar/isar_database.dart';
@@ -8,8 +9,18 @@ import 'package:led_management_software/domain/entities/live_event_log.dart';
 import 'package:led_management_software/domain/repositories/live_log_repository.dart';
 
 class LiveLogRepositoryImpl implements LiveLogRepository {
+  static final List<LiveEventLog> _memoryLogs = <LiveEventLog>[];
+
+  bool get _useMemoryStore => kIsWeb || IsarDatabase.instance.initializationError != null;
+
   @override
   Future<void> appendLog(LiveEventLog eventLog) async {
+    if (_useMemoryStore) {
+      _memoryLogs.removeWhere((item) => item.id == eventLog.id);
+      _memoryLogs.add(eventLog);
+      return;
+    }
+
     final isar = await IsarDatabase.instance.database;
     await isar.writeTxn(() async {
       final existing = await isar.isarEventLogRecords.filter().externalIdEqualTo(eventLog.id).findFirst();
@@ -26,6 +37,14 @@ class LiveLogRepositoryImpl implements LiveLogRepository {
 
   @override
   Future<List<LiveEventLog>> getLogsForProject(String projectId) async {
+    if (_useMemoryStore) {
+      return _memoryLogs
+          .where((log) => log.projectId == projectId)
+          .toList(growable: false)
+        ..sort((a, b) => (a.timestamp ?? DateTime.fromMillisecondsSinceEpoch(0))
+            .compareTo(b.timestamp ?? DateTime.fromMillisecondsSinceEpoch(0)));
+    }
+
     final isar = await IsarDatabase.instance.database;
     final records = await isar.isarEventLogRecords.where().findAll();
     return records
@@ -38,6 +57,14 @@ class LiveLogRepositoryImpl implements LiveLogRepository {
 
   @override
   Stream<LiveEventLog> watchLiveLogs(String projectId) async* {
+    if (_useMemoryStore) {
+      final logs = await getLogsForProject(projectId);
+      if (logs.isNotEmpty) {
+        yield logs.last;
+      }
+      return;
+    }
+
     final isar = await IsarDatabase.instance.database;
     yield* isar.isarEventLogRecords.where().watchLazy(fireImmediately: true).asyncExpand((_) async* {
       final logs = await getLogsForProject(projectId);
@@ -49,6 +76,11 @@ class LiveLogRepositoryImpl implements LiveLogRepository {
 
   @override
   Future<void> clearLogsForProject(String projectId) async {
+    if (_useMemoryStore) {
+      _memoryLogs.removeWhere((item) => item.projectId == projectId);
+      return;
+    }
+
     final isar = await IsarDatabase.instance.database;
     final records = await isar.isarEventLogRecords.where().findAll();
     final target = records.where((record) {

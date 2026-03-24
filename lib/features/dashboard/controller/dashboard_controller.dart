@@ -151,7 +151,7 @@ class DashboardController extends ChangeNotifier {
       _ => log.actionType.name,
     };
 
-    return '$actionLabel • ${_formatTime(log.timestamp)}';
+    return '$actionLabel • ${_formatTime(log.timestamp ?? DateTime.now())}';
   }
 
   String _formatTime(DateTime timestamp) {

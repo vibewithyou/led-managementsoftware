@@ -13,6 +13,7 @@ class LiveEventButton extends StatefulWidget {
     required this.action,
     required this.onPressed,
     this.large = false,
+    this.compact = false,
     this.reducedMotion = false,
     super.key,
   });
@@ -20,6 +21,7 @@ class LiveEventButton extends StatefulWidget {
   final LiveActionConfig action;
   final VoidCallback onPressed;
   final bool large;
+  final bool compact;
   final bool reducedMotion;
 
   @override
@@ -43,8 +45,16 @@ class _LiveEventButtonState extends State<LiveEventButton> {
             ? AppColors.surfaceMuted
             : AppColors.surface;
     final scale = widget.reducedMotion ? 1.0 : (_pressed ? 0.992 : _hovered ? 1.006 : 1.0);
-    final tilePadding = widget.large ? AppSpacing.mdLg : AppSpacing.md;
-    final iconSize = widget.large ? 52.0 : 44.0;
+    final tilePadding = widget.compact
+      ? AppSpacing.sm
+      : widget.large
+        ? AppSpacing.mdLg
+        : AppSpacing.md;
+    final iconSize = widget.compact
+      ? 38.0
+      : widget.large
+        ? 52.0
+        : 44.0;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -96,13 +106,15 @@ class _LiveEventButtonState extends State<LiveEventButton> {
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                       ),
-                      const SizedBox(height: AppSpacing.xxs),
-                      Text(
-                        _subtitleFor(action),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
-                      ),
+                      if (!widget.compact) ...[
+                        const SizedBox(height: AppSpacing.xxs),
+                        Text(
+                          _subtitleFor(action),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -116,8 +128,10 @@ class _LiveEventButtonState extends State<LiveEventButton> {
                         type: StatusBadgeType.hover,
                         compact: true,
                       ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Icon(Icons.arrow_forward_rounded, size: 16, color: accent.withValues(alpha: 0.9)),
+                    if (!widget.compact) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Icon(Icons.arrow_forward_rounded, size: 16, color: accent.withValues(alpha: 0.9)),
+                    ],
                   ],
                 ),
               ],

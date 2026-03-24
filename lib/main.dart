@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:led_management_software/app/app.dart';
 import 'package:led_management_software/data/services/global_hotkey_service.dart';
@@ -5,6 +6,11 @@ import 'package:led_management_software/data/local/isar/isar_database.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (kIsWeb) {
+    runApp(const LedControlApp());
+    return;
+  }
 
   try {
     await IsarDatabase.instance.initialize();

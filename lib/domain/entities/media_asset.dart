@@ -218,7 +218,7 @@ class MediaAsset {
 
   @override
   int get hashCode {
-    return Object.hash(
+    return Object.hashAll([
       id,
       title,
       filePath,
@@ -241,7 +241,7 @@ class MediaAsset {
       fileExtension,
       importedAt,
       lastValidatedAt,
-    );
+    ]);
   }
 }
 

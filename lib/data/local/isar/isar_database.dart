@@ -23,7 +23,12 @@ class IsarDatabase {
   Object? get initializationError => _initError;
 
   Future<void> initialize() async {
-    if (_isar != null) {
+    if (_isar != null || _initError != null) {
+      return;
+    }
+
+    if (kIsWeb) {
+      _initError = UnsupportedError('Isar persistence is not available on web.');
       return;
     }
 
@@ -59,7 +64,7 @@ class IsarDatabase {
     }
     await initialize();
     if (_isar == null) {
-      throw StateError('Isar database is not initialized.');
+      throw StateError('Isar database is not initialized: ${_initError ?? 'unknown error'}');
     }
     return _isar!;
   }
