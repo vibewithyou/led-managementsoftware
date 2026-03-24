@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:led_management_software/core/constants/app_spacing.dart';
 import 'package:led_management_software/core/theme/app_colors.dart';
+import 'package:led_management_software/domain/entities/media_asset.dart';
 import 'package:led_management_software/domain/enums/team_type.dart';
 import 'package:led_management_software/features/intro_players/controller/intro_players_controller.dart';
 import 'package:led_management_software/features/intro_players/widgets/player_intro_card.dart';
@@ -43,7 +44,7 @@ class _IntroPlayersScreenState extends State<IntroPlayersScreen> {
           children: [
             const PageHeader(
               title: 'Lineup',
-              description: 'Spieler-Intro mit Reihenfolge, Team-Tabs und direkter Trigger-Steuerung.',
+              description: 'Spieler-Intro mit direkter Clip-Auswahl aus der Medienbibliothek.',
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
@@ -113,18 +114,18 @@ class _IntroPlayersScreenState extends State<IntroPlayersScreen> {
             child: _controller.isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : ReorderableListView.builder(
-                    itemCount: _controller.selectedEntries.length,
+                    itemCount: _controller.selectedItems.length,
                     onReorder: _controller.reorderSelectedTeam,
                     itemBuilder: (_, index) {
-                      final entry = _controller.selectedEntries[index];
+                      final item = _controller.selectedItems[index];
                       return Padding(
-                        key: ValueKey(entry.id),
+                        key: ValueKey(item.entry.id),
                         padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                         child: PlayerIntroCard(
-                          entry: entry,
+                          item: item,
                           orderIndex: index,
-                          onDelete: () => _controller.deletePlayer(entry.id),
-                          onToggleActive: (value) => _controller.togglePlayerActive(entry, value),
+                          onDelete: () => _controller.deletePlayer(item.entry.id),
+                          onToggleActive: (value) => _controller.togglePlayerActive(item.entry, value),
                         ),
                       );
                     },
@@ -139,7 +140,7 @@ class _IntroPlayersScreenState extends State<IntroPlayersScreen> {
     final activePlayer = _controller.sequenceController.activePlayer;
 
     return AppPanel(
-      title: 'IntroSequenceController',
+      title: 'Intro-Steuerung',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -163,16 +164,16 @@ class _IntroPlayersScreenState extends State<IntroPlayersScreen> {
                 children: [
                   Text(_controller.sequenceController.statusMessage, style: Theme.of(context).textTheme.titleSmall),
                   const SizedBox(height: AppSpacing.xs),
-                  Text('playerName: ${activePlayer?.playerName ?? '-'}'),
-                  Text('cueId: ${activePlayer?.introCueId ?? '-'}'),
-                  Text('orderIndex: ${activePlayer?.sortOrder ?? '-'}'),
+                  Text('Spieler: ${activePlayer?.playerName ?? '-'}'),
+                  Text('Clip: ${activePlayer?.clipTitle ?? '-'}'),
+                  Text('Kategorie: ${activePlayer?.category ?? '-'}'),
                 ],
               ),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
           SizedBox(
-            height: 82,
+            height: 74,
             width: double.infinity,
             child: LargeActionButton(
               label: 'Intro starten',
@@ -183,7 +184,7 @@ class _IntroPlayersScreenState extends State<IntroPlayersScreen> {
           ),
           const SizedBox(height: AppSpacing.sm),
           SizedBox(
-            height: 82,
+            height: 74,
             width: double.infinity,
             child: LargeActionButton(
               label: 'Vorheriger Spieler',
@@ -193,7 +194,7 @@ class _IntroPlayersScreenState extends State<IntroPlayersScreen> {
           ),
           const SizedBox(height: AppSpacing.sm),
           SizedBox(
-            height: 82,
+            height: 74,
             width: double.infinity,
             child: LargeActionButton(
               label: 'Nächster Spieler',
@@ -203,7 +204,17 @@ class _IntroPlayersScreenState extends State<IntroPlayersScreen> {
           ),
           const SizedBox(height: AppSpacing.sm),
           SizedBox(
-            height: 82,
+            height: 74,
+            width: double.infinity,
+            child: LargeActionButton(
+              label: 'Spieler überspringen',
+              icon: Icons.fast_forward_rounded,
+              onPressed: _controller.skipCurrentPlayer,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            height: 74,
             width: double.infinity,
             child: LargeActionButton(
               label: 'Endclip',
@@ -217,53 +228,168 @@ class _IntroPlayersScreenState extends State<IntroPlayersScreen> {
   }
 
   Future<void> _openAddPlayerDialog() async {
-    final playerNameController = TextEditingController();
-    final cueIdController = TextEditingController();
-
-    final shouldSave = await showDialog<bool>(
+    final result = await showDialog<_AddPlayerDialogResult>(
       context: context,
-      builder: (_) {
-        return AlertDialog(
-          title: const Text('Spieler hinzufügen'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: playerNameController,
-                decoration: const InputDecoration(labelText: 'playerName'),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              TextField(
-                controller: cueIdController,
-                decoration: const InputDecoration(labelText: 'cueId'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Abbrechen'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Speichern'),
-            ),
-          ],
-        );
-      },
+      builder: (_) => _AddPlayerDialog(
+        initialTeam: _controller.selectedTeam,
+        clips: _controller.availableClips,
+      ),
     );
 
-    if (shouldSave != true) {
+    if (result == null) {
       return;
     }
 
-    final playerName = playerNameController.text.trim();
-    final cueId = cueIdController.text.trim();
-    if (playerName.isEmpty || cueId.isEmpty) {
-      return;
-    }
+    await _controller.addPlayer(
+      playerName: result.playerName,
+      mediaAssetId: result.mediaAssetId,
+      teamType: result.teamType,
+      isActive: result.isActive,
+    );
+  }
+}
 
-    await _controller.addPlayer(playerName: playerName, cueId: cueId);
+class _AddPlayerDialogResult {
+  const _AddPlayerDialogResult({
+    required this.playerName,
+    required this.mediaAssetId,
+    required this.teamType,
+    required this.isActive,
+  });
+
+  final String playerName;
+  final String mediaAssetId;
+  final TeamType teamType;
+  final bool isActive;
+}
+
+class _AddPlayerDialog extends StatefulWidget {
+  const _AddPlayerDialog({
+    required this.initialTeam,
+    required this.clips,
+  });
+
+  final TeamType initialTeam;
+  final List<MediaAsset> clips;
+
+  @override
+  State<_AddPlayerDialog> createState() => _AddPlayerDialogState();
+}
+
+class _AddPlayerDialogState extends State<_AddPlayerDialog> {
+  late final TextEditingController _playerNameController;
+  late final TextEditingController _clipSearchController;
+  TeamType _teamType = TeamType.home;
+  bool _isActive = true;
+  String? _selectedClipId;
+
+  @override
+  void initState() {
+    super.initState();
+    _playerNameController = TextEditingController();
+    _clipSearchController = TextEditingController();
+    _teamType = widget.initialTeam;
+  }
+
+  @override
+  void dispose() {
+    _playerNameController.dispose();
+    _clipSearchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filteredClips = widget.clips
+        .where(
+          (clip) => clip.title.toLowerCase().contains(_clipSearchController.text.trim().toLowerCase()),
+        )
+        .toList(growable: false);
+
+    return AlertDialog(
+      title: const Text('Spieler hinzufügen'),
+      content: SizedBox(
+        width: 520,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _playerNameController,
+              decoration: const InputDecoration(labelText: 'Spieler'),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            DropdownButtonFormField<TeamType>(
+              initialValue: _teamType,
+              decoration: const InputDecoration(labelText: 'Team'),
+              items: const [
+                DropdownMenuItem(value: TeamType.home, child: Text('Heim')),
+                DropdownMenuItem(value: TeamType.guest, child: Text('Gast')),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() {
+                  _teamType = value;
+                });
+              },
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            TextField(
+              controller: _clipSearchController,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Clip suchen',
+                prefixIcon: Icon(Icons.search_rounded),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            DropdownButtonFormField<String>(
+              initialValue: _selectedClipId,
+              decoration: const InputDecoration(labelText: 'Clip'),
+              items: filteredClips
+                  .map(
+                    (clip) => DropdownMenuItem(
+                      value: clip.id,
+                      child: Text('${clip.title} • ${clip.category.name}'),
+                    ),
+                  )
+                  .toList(growable: false),
+              onChanged: (value) => setState(() => _selectedClipId = value),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _isActive,
+              title: const Text('Aktiv'),
+              onChanged: (value) => setState(() => _isActive = value),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Abbrechen'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final player = _playerNameController.text.trim();
+            final clipId = _selectedClipId;
+            if (player.isEmpty || clipId == null) {
+              return;
+            }
+            Navigator.of(context).pop(
+              _AddPlayerDialogResult(
+                playerName: player,
+                mediaAssetId: clipId,
+                teamType: _teamType,
+                isActive: _isActive,
+              ),
+            );
+          },
+          child: const Text('Speichern'),
+        ),
+      ],
+    );
   }
 }
 

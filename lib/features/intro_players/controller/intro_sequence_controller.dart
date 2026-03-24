@@ -1,44 +1,61 @@
 import 'package:flutter/foundation.dart';
-import 'package:led_management_software/domain/entities/lineup_entry.dart';
 
-/// Handles intro sequence flow and active player navigation.
+class IntroSequenceEntry {
+  const IntroSequenceEntry({
+    required this.id,
+    required this.playerName,
+    required this.mediaAssetId,
+    required this.clipTitle,
+    required this.category,
+    required this.sortOrder,
+    required this.isActive,
+    required this.hasValidClip,
+  });
+
+  final String id;
+  final String playerName;
+  final String? mediaAssetId;
+  final String clipTitle;
+  final String category;
+  final int sortOrder;
+  final bool isActive;
+  final bool hasValidClip;
+}
+
 class IntroSequenceController extends ChangeNotifier {
   bool _isRunning = false;
   int _activeIndex = -1;
-  LineupEntry? _activePlayer;
+  IntroSequenceEntry? _activePlayer;
   String _statusMessage = 'Bereit';
 
   bool get isRunning => _isRunning;
   int get activeIndex => _activeIndex;
-  LineupEntry? get activePlayer => _activePlayer;
+  IntroSequenceEntry? get activePlayer => _activePlayer;
   String get statusMessage => _statusMessage;
 
-  /// Starts intro flow from first active player.
-  void startIntro(List<LineupEntry> teamEntries) {
-    final activeEntries = teamEntries.where((entry) => entry.isActive).toList(growable: false)
-      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+  void startIntro(List<IntroSequenceEntry> teamEntries) {
+    final playable = _playableEntries(teamEntries);
 
-    if (activeEntries.isEmpty) {
+    if (playable.isEmpty) {
       _isRunning = false;
       _activeIndex = -1;
       _activePlayer = null;
-      _statusMessage = 'Keine aktiven Spieler';
+      _statusMessage = 'Keine spielbaren Spielerclips';
       notifyListeners();
       return;
     }
 
     _isRunning = true;
     _activeIndex = 0;
-    _activePlayer = activeEntries.first;
+    _activePlayer = playable.first;
     _statusMessage = 'Intro gestartet';
     notifyListeners();
   }
 
-  /// Moves to next player in active lineup.
-  void playNextPlayer(List<LineupEntry> teamEntries) {
-    final activeEntries = _activeEntries(teamEntries);
-    if (activeEntries.isEmpty) {
-      _statusMessage = 'Keine aktiven Spieler';
+  void playNextPlayer(List<IntroSequenceEntry> teamEntries) {
+    final playable = _playableEntries(teamEntries);
+    if (playable.isEmpty) {
+      _statusMessage = 'Keine spielbaren Spielerclips';
       notifyListeners();
       return;
     }
@@ -48,18 +65,24 @@ class IntroSequenceController extends ChangeNotifier {
       return;
     }
 
-    final nextIndex = (_activeIndex + 1).clamp(0, activeEntries.length - 1);
-    _activeIndex = nextIndex;
-    _activePlayer = activeEntries[_activeIndex];
+    if (_activeIndex >= playable.length - 1) {
+      _activeIndex = playable.length - 1;
+      _activePlayer = playable[_activeIndex];
+      _statusMessage = 'Letzter Spieler erreicht';
+      notifyListeners();
+      return;
+    }
+
+    _activeIndex += 1;
+    _activePlayer = playable[_activeIndex];
     _statusMessage = 'Nächster Spieler';
     notifyListeners();
   }
 
-  /// Moves to previous player in active lineup.
-  void playPreviousPlayer(List<LineupEntry> teamEntries) {
-    final activeEntries = _activeEntries(teamEntries);
-    if (activeEntries.isEmpty) {
-      _statusMessage = 'Keine aktiven Spieler';
+  void playPreviousPlayer(List<IntroSequenceEntry> teamEntries) {
+    final playable = _playableEntries(teamEntries);
+    if (playable.isEmpty) {
+      _statusMessage = 'Keine spielbaren Spielerclips';
       notifyListeners();
       return;
     }
@@ -69,14 +92,25 @@ class IntroSequenceController extends ChangeNotifier {
       return;
     }
 
-    final previousIndex = (_activeIndex - 1).clamp(0, activeEntries.length - 1);
-    _activeIndex = previousIndex;
-    _activePlayer = activeEntries[_activeIndex];
+    _activeIndex = (_activeIndex - 1).clamp(0, playable.length - 1);
+    _activePlayer = playable[_activeIndex];
     _statusMessage = 'Vorheriger Spieler';
     notifyListeners();
   }
 
-  /// Plays final outro/end clip and ends sequence state.
+  void skipCurrentPlayer(List<IntroSequenceEntry> teamEntries) {
+    if (!_isRunning) {
+      _statusMessage = 'Intro ist nicht aktiv';
+      notifyListeners();
+      return;
+    }
+
+    final previous = _activePlayer?.playerName ?? 'Spieler';
+    playNextPlayer(teamEntries);
+    _statusMessage = '$previous übersprungen';
+    notifyListeners();
+  }
+
   void playEndClip() {
     _isRunning = false;
     _activeIndex = -1;
@@ -85,8 +119,10 @@ class IntroSequenceController extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<LineupEntry> _activeEntries(List<LineupEntry> teamEntries) {
-    return teamEntries.where((entry) => entry.isActive).toList(growable: false)
+  List<IntroSequenceEntry> _playableEntries(List<IntroSequenceEntry> teamEntries) {
+    return teamEntries
+        .where((entry) => entry.isActive && entry.hasValidClip)
+        .toList(growable: false)
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
   }
 }
