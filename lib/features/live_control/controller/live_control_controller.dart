@@ -11,6 +11,8 @@ import 'package:led_management_software/domain/enums/cue_type.dart';
 import 'package:led_management_software/domain/enums/live_action_type.dart';
 import 'package:led_management_software/domain/enums/playback_status.dart';
 import 'package:led_management_software/domain/enums/queue_behavior.dart';
+import 'package:led_management_software/domain/enums/transport_status.dart';
+import 'package:led_management_software/data/services/vlc_bridge_service.dart';
 import 'package:led_management_software/features/live_control/model/live_action_config.dart';
 import 'package:led_management_software/features/live_control/model/live_cue_model.dart';
 import 'package:led_management_software/features/live_control/service/live_control_service.dart';
@@ -39,6 +41,9 @@ class LiveControlController extends ChangeNotifier {
       projectId: 'live_project',
       fallbackCue: fallbackCue,
       cueDurationsMs: _cueDurations(),
+      vlcService: VlcService(
+        executablePath: _settingsService.vlcExecutablePath.trim().isEmpty ? null : _settingsService.vlcExecutablePath.trim(),
+      ),
     );
     _playbackService.addListener(_onPlaybackChanged);
     _settingsService.addListener(_onSettingsChanged);
@@ -75,6 +80,10 @@ class LiveControlController extends ChangeNotifier {
   String get activeProjectId => _playbackService.projectId;
   bool get fallbackConfigured => _playbackService.fallbackCue.title.trim().isNotEmpty;
   int get queueLength => _queue.length;
+  TransportStatus get transportStatus => _playbackState.transportStatus;
+  String get transportMessage => _playbackState.transportMessage;
+
+  bool get hasTransportError => transportStatus == TransportStatus.error || transportStatus == TransportStatus.fileMissing;
 
   String get lockedSponsorLabel {
     final cue = _playbackService.playbackState.currentCue;
@@ -163,6 +172,9 @@ class LiveControlController extends ChangeNotifier {
         )
         .toList(growable: false);
     _logs = _playbackService.logs;
+    if (hasTransportError) {
+      _settingsService.setLastVlcError(_playbackState.lastError ?? _playbackState.transportMessage);
+    }
     _liveRuntimeState.update(playbackState: _playbackState, queue: _queue, vlcRunning: _playbackService.isVlcRunning);
   }
 

@@ -4,6 +4,7 @@ import 'package:led_management_software/data/repositories/live_log_repository_im
 import 'package:led_management_software/data/repositories/media_repository_impl.dart';
 import 'package:led_management_software/data/repositories/project_repository_impl.dart';
 import 'package:led_management_software/domain/enums/media_category.dart';
+import 'package:led_management_software/domain/enums/transport_status.dart';
 import 'package:led_management_software/features/dashboard/model/dashboard_kpi_model.dart';
 import 'package:led_management_software/shared/state/active_project_state.dart';
 import 'package:led_management_software/shared/state/live_runtime_state.dart';
@@ -68,6 +69,8 @@ class DashboardController extends ChangeNotifier {
       final lastLog = logs.isNotEmpty ? logs.last : null;
 
       final queue = _liveRuntimeState.queue;
+      final transportStatus = _liveRuntimeState.playbackState.transportStatus;
+      final transportMessage = _liveRuntimeState.playbackState.transportMessage;
       _queuedCueLabels = queue.map((item) => item.title).toList(growable: false);
       _currentCueLabel = _liveRuntimeState.playbackState.currentCue?.title ?? '-';
       _lastActionLabel = lastLog == null
@@ -91,7 +94,12 @@ class DashboardController extends ChangeNotifier {
         DashboardKpiModel(label: 'Sponsorclips', value: '$sponsorClips', change: sponsorLoopSet ? 'Loop gesetzt' : 'Loop fehlt', positive: sponsorLoopSet),
         DashboardKpiModel(label: 'Spielerclips', value: '$playerClips', change: 'Kategorie player', positive: true),
         DashboardKpiModel(label: 'Fallback', value: fallbackSet ? 'Gesetzt' : 'Fehlt', change: _fallbackLabel, positive: fallbackSet),
-        DashboardKpiModel(label: 'VLC', value: _liveRuntimeState.vlcRunning ? 'Running' : 'Stopped', change: 'Playback Engine', positive: _liveRuntimeState.vlcRunning),
+        DashboardKpiModel(
+          label: 'VLC Transport',
+          value: transportStatus.name,
+          change: transportMessage,
+          positive: transportStatus != TransportStatus.error && transportStatus != TransportStatus.fileMissing,
+        ),
         DashboardKpiModel(label: 'Queue', value: '${queue.length}', change: queue.isEmpty ? 'Leer' : 'Aktiv', positive: queue.isEmpty),
         DashboardKpiModel(label: 'Aktueller Clip', value: _currentCueLabel, change: 'Now Playing', positive: _currentCueLabel != '-'),
         DashboardKpiModel(label: 'Letzte Aktion', value: _lastActionLabel, change: 'LiveLog', positive: lastLog != null),
@@ -109,6 +117,9 @@ class DashboardController extends ChangeNotifier {
       }
       if (invalidLineupReferences > 0) {
         warningItems.add('$invalidLineupReferences Lineup-Einträge verweisen auf fehlende Clips.');
+      }
+      if (transportStatus == TransportStatus.error || transportStatus == TransportStatus.fileMissing) {
+        warningItems.add('Playback Transportfehler: $transportMessage');
       }
       _alerts = warningItems;
     } catch (exception) {

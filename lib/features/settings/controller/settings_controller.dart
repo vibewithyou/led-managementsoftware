@@ -16,6 +16,8 @@ class SettingsController extends ChangeNotifier {
   List<HotkeyBindingModel> get hotkeyBindings => _service.loadHotkeyBindings();
 
   List<LiveActionConfig> get liveActions => _service.loadLiveActions();
+  String get vlcExecutablePath => _service.vlcExecutablePath;
+  String? get lastVlcError => _service.lastVlcError;
 
   List<String> get availableHotkeys => SettingsService.availableHotkeys;
 
@@ -39,6 +41,10 @@ class SettingsController extends ChangeNotifier {
     final moved = actions.removeAt(oldIndex);
     actions.insert(newIndex, moved);
     _service.reorderLiveActions(actions.map((item) => item.id).toList(growable: false));
+  }
+
+  void updateVlcExecutablePath(String value) {
+    _service.updateVlcExecutablePath(value);
   }
 
   void _forwardChanges() {

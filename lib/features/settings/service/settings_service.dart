@@ -31,6 +31,18 @@ class SettingsService extends ChangeNotifier {
 
   final File _storageFile = File('.led_live_actions.json');
   List<LiveActionConfig>? _liveActionsCache;
+  String _vlcExecutablePath = '';
+  String? _lastVlcError;
+
+  String get vlcExecutablePath {
+    _ensureLiveActionsLoaded();
+    return _vlcExecutablePath;
+  }
+
+  String? get lastVlcError {
+    _ensureLiveActionsLoaded();
+    return _lastVlcError;
+  }
 
   List<SettingItemModel> loadPlaybackSettings() {
     return const [
@@ -133,6 +145,29 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateVlcExecutablePath(String value) {
+    _ensureLiveActionsLoaded();
+    final normalized = value.trim();
+    if (_vlcExecutablePath == normalized) {
+      return;
+    }
+    _vlcExecutablePath = normalized;
+    _persistLiveActions();
+    notifyListeners();
+  }
+
+  void setLastVlcError(String? message) {
+    _ensureLiveActionsLoaded();
+    final normalized = message?.trim();
+    final next = normalized == null || normalized.isEmpty ? null : normalized;
+    if (_lastVlcError == next) {
+      return;
+    }
+    _lastVlcError = next;
+    _persistLiveActions();
+    notifyListeners();
+  }
+
   void _ensureLiveActionsLoaded() {
     if (_liveActionsCache != null) {
       return;
@@ -142,16 +177,20 @@ class SettingsService extends ChangeNotifier {
 
     if (!_storageFile.existsSync()) {
       _liveActionsCache = seeded;
+      _vlcExecutablePath = '';
+      _lastVlcError = null;
       _persistLiveActions();
       return;
     }
 
     try {
-      final payload = jsonDecode(_storageFile.readAsStringSync()) as Map<String, dynamic>;
+      final payload = _readPayload();
       final items = (payload['liveActions'] as List<dynamic>? ?? const <dynamic>[])
           .whereType<Map<String, dynamic>>()
           .map(LiveActionConfig.fromJson)
           .toList(growable: false);
+      _vlcExecutablePath = (payload['vlcExecutablePath'] as String? ?? '').trim();
+      _lastVlcError = (payload['lastVlcError'] as String?)?.trim();
 
       if (items.isEmpty) {
         _liveActionsCache = seeded;
@@ -163,16 +202,31 @@ class SettingsService extends ChangeNotifier {
       _persistLiveActions();
     } catch (_) {
       _liveActionsCache = seeded;
+      _vlcExecutablePath = '';
+      _lastVlcError = null;
       _persistLiveActions();
     }
   }
 
   void _persistLiveActions() {
-    final payload = {
+    final payload = <String, dynamic>{
       'version': 1,
       'liveActions': _liveActionsCache?.map((item) => item.toJson()).toList(growable: false) ?? const [],
+      'vlcExecutablePath': _vlcExecutablePath,
+      'lastVlcError': _lastVlcError,
     };
     _storageFile.writeAsStringSync(jsonEncode(payload));
+  }
+
+  Map<String, dynamic> _readPayload() {
+    final raw = jsonDecode(_storageFile.readAsStringSync());
+    if (raw is Map<String, dynamic>) {
+      return raw;
+    }
+    if (raw is Map) {
+      return raw.map((key, value) => MapEntry(key.toString(), value));
+    }
+    return <String, dynamic>{};
   }
 
   List<LiveActionConfig> _mergeMissingDefaults(List<LiveActionConfig> existing, List<LiveActionConfig> defaults) {

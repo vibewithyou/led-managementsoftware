@@ -12,6 +12,7 @@ import 'package:led_management_software/domain/entities/queue_state.dart';
 import 'package:led_management_software/domain/enums/cue_type.dart';
 import 'package:led_management_software/domain/enums/live_action_type.dart';
 import 'package:led_management_software/domain/enums/playback_status.dart';
+import 'package:led_management_software/domain/enums/transport_status.dart';
 import 'package:led_management_software/domain/repositories/live_log_repository.dart';
 import 'package:led_management_software/domain/repositories/media_repository.dart';
 import 'package:led_management_software/data/services/vlc_bridge_service.dart';
@@ -33,6 +34,7 @@ class PlaybackService extends ChangeNotifier {
         _vlcService = vlcService ?? VlcService(),
         _playbackState = PlaybackState.initial(projectId: projectId),
         _queueState = QueueState.initial(projectId: projectId) {
+    _vlcStatusSubscription = _vlcService.statusStream.listen(_handleVlcStatusUpdate);
     unawaited(_warmMediaDurationCache());
   }
 
@@ -49,6 +51,7 @@ class PlaybackService extends ChangeNotifier {
   final List<LiveEventLog> _logs = [];
 
   Timer? _ticker;
+  StreamSubscription<VlcStatusSnapshot>? _vlcStatusSubscription;
   final Map<String, int> _resolvedDurationsByMediaAssetId = {};
 
   PlaybackState get playbackState => _playbackState;
@@ -60,6 +63,8 @@ class PlaybackService extends ChangeNotifier {
   List<LiveEventLog> get logs => List.unmodifiable(_logs);
 
   bool get isVlcRunning => _vlcService.isRunning();
+  TransportStatus get transportStatus => _playbackState.transportStatus;
+  String get transportMessage => _playbackState.transportMessage;
 
   String get projectId => _projectId;
 
@@ -97,6 +102,8 @@ class PlaybackService extends ChangeNotifier {
       lastAction: LiveActionType.triggerCue,
       // Clear previous transport errors as soon as a fresh cue starts.
       lastError: null,
+      transportStatus: TransportStatus.starting,
+      transportMessage: 'Wiedergabe wird vorbereitet …',
     );
 
     _currentExecution = CueExecution(
@@ -189,6 +196,8 @@ class PlaybackService extends ChangeNotifier {
       isBlackScreen: false,
       lastAction: LiveActionType.stopCue,
       lastError: null,
+      transportStatus: TransportStatus.stopped,
+      transportMessage: 'VLC gestoppt',
     );
 
     _appendLog(
@@ -252,6 +261,8 @@ class PlaybackService extends ChangeNotifier {
       isBlackScreen: true,
       lastAction: LiveActionType.blackScreenOn,
       lastError: null,
+      transportStatus: TransportStatus.stopped,
+      transportMessage: 'Black Screen aktiv',
     );
 
     _currentExecution = CueExecution(
@@ -397,6 +408,8 @@ class PlaybackService extends ChangeNotifier {
         debugPrint('[PlaybackService] No media path found for cue ${cue.title} (${cue.mediaAssetId}). VLC playback skipped.');
         _playbackState = _playbackState.copyWith(
           lastError: 'Kein Dateipfad für Cue "${cue.title}" gefunden.',
+          transportStatus: TransportStatus.fileMissing,
+          transportMessage: 'Datei fehlt',
         );
         notifyListeners();
         _appendLog(
@@ -431,7 +444,17 @@ class PlaybackService extends ChangeNotifier {
       );
     } catch (error) {
       debugPrint('[PlaybackService] VLC playback failed: $error');
-      _playbackState = _playbackState.copyWith(lastError: '$error');
+      final userError = switch (error) {
+        VlcOperationException(:final operatorMessage) => operatorMessage,
+        _ => '$error',
+      };
+      _playbackState = _playbackState.copyWith(
+        lastError: '$error',
+        transportStatus: error is VlcOperationException && error.status == VlcTransportStatus.fileMissing
+            ? TransportStatus.fileMissing
+            : TransportStatus.error,
+        transportMessage: userError,
+      );
       notifyListeners();
       _appendLog(
         actionType: LiveActionType.triggerCue,
@@ -475,6 +498,24 @@ class PlaybackService extends ChangeNotifier {
     }
   }
 
+  void _handleVlcStatusUpdate(VlcStatusSnapshot snapshot) {
+    final nextStatus = switch (snapshot.status) {
+      VlcTransportStatus.ready => TransportStatus.ready,
+      VlcTransportStatus.starting => TransportStatus.starting,
+      VlcTransportStatus.playing => TransportStatus.playing,
+      VlcTransportStatus.error => TransportStatus.error,
+      VlcTransportStatus.fileMissing => TransportStatus.fileMissing,
+      VlcTransportStatus.stopped => TransportStatus.stopped,
+    };
+
+    _playbackState = _playbackState.copyWith(
+      transportStatus: nextStatus,
+      transportMessage: snapshot.operatorMessage,
+      lastError: snapshot.technicalMessage ?? _playbackState.lastError,
+    );
+    notifyListeners();
+  }
+
   Future<String?> _resolveMediaPath(Cue cue) async {
     // Demo/live-control cues may not yet reference a persisted media asset.
     // In that case the service logs and skips transport instead of breaking playback state.
@@ -494,7 +535,9 @@ class PlaybackService extends ChangeNotifier {
   @override
   void dispose() {
     _ticker?.cancel();
+    _vlcStatusSubscription?.cancel();
     unawaited(_vlcService.stop());
+    _vlcService.dispose();
     super.dispose();
   }
 }

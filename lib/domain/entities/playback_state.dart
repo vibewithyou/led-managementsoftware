@@ -1,6 +1,7 @@
 import 'package:led_management_software/domain/entities/cue.dart';
 import 'package:led_management_software/domain/enums/live_action_type.dart';
 import 'package:led_management_software/domain/enums/playback_status.dart';
+import 'package:led_management_software/domain/enums/transport_status.dart';
 
 class PlaybackState {
   const PlaybackState({
@@ -13,6 +14,8 @@ class PlaybackState {
     required this.startedAt,
     required this.lastAction,
     required this.lastError,
+    required this.transportStatus,
+    required this.transportMessage,
     required this.isLocked,
     required this.isBlackScreen,
   });
@@ -28,6 +31,8 @@ class PlaybackState {
       startedAt: null,
       lastAction: null,
       lastError: null,
+      transportStatus: TransportStatus.stopped,
+      transportMessage: 'VLC gestoppt',
       isLocked: false,
       isBlackScreen: false,
     );
@@ -51,6 +56,8 @@ class PlaybackState {
           ? null
           : LiveActionTypeX.fromValue(json['lastAction'] as String?),
       lastError: json['lastError'] as String?,
+      transportStatus: TransportStatusX.fromValue(json['transportStatus'] as String?),
+      transportMessage: json['transportMessage'] as String? ?? 'VLC gestoppt',
       isLocked: json['isLocked'] as bool? ?? false,
       isBlackScreen: json['isBlackScreen'] as bool? ?? false,
     );
@@ -65,6 +72,8 @@ class PlaybackState {
   final DateTime? startedAt;
   final LiveActionType? lastAction;
   final String? lastError;
+  final TransportStatus transportStatus;
+  final String transportMessage;
   final bool isLocked;
   final bool isBlackScreen;
 
@@ -78,6 +87,8 @@ class PlaybackState {
     Object? startedAt = _unset,
     Object? lastAction = _unset,
     Object? lastError = _unset,
+    TransportStatus? transportStatus,
+    String? transportMessage,
     bool? isLocked,
     bool? isBlackScreen,
   }) {
@@ -91,6 +102,8 @@ class PlaybackState {
       startedAt: startedAt == _unset ? this.startedAt : startedAt as DateTime?,
       lastAction: lastAction == _unset ? this.lastAction : lastAction as LiveActionType?,
       lastError: lastError == _unset ? this.lastError : lastError as String?,
+      transportStatus: transportStatus ?? this.transportStatus,
+      transportMessage: transportMessage ?? this.transportMessage,
       isLocked: isLocked ?? this.isLocked,
       isBlackScreen: isBlackScreen ?? this.isBlackScreen,
     );
@@ -107,6 +120,8 @@ class PlaybackState {
       'startedAt': startedAt?.toIso8601String(),
       'lastAction': lastAction?.value,
       'lastError': lastError,
+      'transportStatus': transportStatus.value,
+      'transportMessage': transportMessage,
       'isLocked': isLocked,
       'isBlackScreen': isBlackScreen,
     };
@@ -126,6 +141,8 @@ class PlaybackState {
             startedAt == other.startedAt &&
             lastAction == other.lastAction &&
             lastError == other.lastError &&
+            transportStatus == other.transportStatus &&
+            transportMessage == other.transportMessage &&
             isLocked == other.isLocked &&
             isBlackScreen == other.isBlackScreen;
   }
@@ -142,6 +159,8 @@ class PlaybackState {
       startedAt,
       lastAction,
       lastError,
+      transportStatus,
+      transportMessage,
       isLocked,
       isBlackScreen,
     );

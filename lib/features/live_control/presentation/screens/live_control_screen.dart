@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:led_management_software/core/constants/app_spacing.dart';
 import 'package:led_management_software/core/theme/app_colors.dart';
+import 'package:led_management_software/domain/enums/transport_status.dart';
 import 'package:led_management_software/features/live_control/controller/live_control_controller.dart';
 import 'package:led_management_software/features/live_control/model/live_action_config.dart';
 import 'package:led_management_software/features/live_control/widgets/live_event_button.dart';
@@ -79,6 +80,34 @@ class _LiveControlScreenState extends State<LiveControlScreen> with SingleTicker
               ),
               const SizedBox(height: AppSpacing.md),
             ],
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: _controller.hasTransportError ? AppColors.error.withValues(alpha: 0.12) : AppColors.surfaceMuted,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: _controller.hasTransportError ? AppColors.error : AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  StatusBadge(
+                    label: _transportLabel(_controller.transportStatus),
+                    type: _transportBadge(_controller.transportStatus),
+                    compact: true,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      _controller.transportMessage,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: _controller.hasTransportError ? AppColors.error : AppColors.textPrimary,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
             Expanded(
               child: Column(
                 children: [
@@ -206,5 +235,27 @@ class _LiveControlScreenState extends State<LiveControlScreen> with SingleTicker
       default:
         return StatusBadgeType.ready;
     }
+  }
+
+  String _transportLabel(TransportStatus status) {
+    return switch (status) {
+      TransportStatus.ready => 'VLC BEREIT',
+      TransportStatus.starting => 'VLC STARTET',
+      TransportStatus.playing => 'VLC SPIELT',
+      TransportStatus.error => 'VLC FEHLER',
+      TransportStatus.fileMissing => 'DATEI FEHLT',
+      TransportStatus.stopped => 'VLC GESTOPPT',
+    };
+  }
+
+  StatusBadgeType _transportBadge(TransportStatus status) {
+    return switch (status) {
+      TransportStatus.ready => StatusBadgeType.ready,
+      TransportStatus.starting => StatusBadgeType.queued,
+      TransportStatus.playing => StatusBadgeType.active,
+      TransportStatus.error => StatusBadgeType.error,
+      TransportStatus.fileMissing => StatusBadgeType.error,
+      TransportStatus.stopped => StatusBadgeType.disabled,
+    };
   }
 }

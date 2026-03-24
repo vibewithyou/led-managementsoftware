@@ -18,15 +18,18 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late final SettingsController _controller;
+  late final TextEditingController _vlcPathController;
 
   @override
   void initState() {
     super.initState();
     _controller = SettingsController();
+    _vlcPathController = TextEditingController(text: _controller.vlcExecutablePath);
   }
 
   @override
   void dispose() {
+    _vlcPathController.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -38,6 +41,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context, _) {
         final settings = _controller.playbackSettings;
         final actions = _controller.liveActions;
+        if (_vlcPathController.text != _controller.vlcExecutablePath) {
+          _vlcPathController.text = _controller.vlcExecutablePath;
+        }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -54,10 +60,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     flex: 2,
                     child: AppPanel(
                       title: 'Playback Engine',
-                      child: ListView.separated(
-                        itemCount: settings.length,
-                        itemBuilder: (context, index) => SettingSwitchTile(item: settings[index]),
-                        separatorBuilder: (context, index) => const Divider(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextField(
+                            controller: _vlcPathController,
+                            decoration: const InputDecoration(
+                              labelText: 'VLC Pfad (optional)',
+                              hintText: 'z.B. /usr/bin/vlc oder C:\\Program Files\\VideoLAN\\VLC\\vlc.exe',
+                            ),
+                            onSubmitted: _controller.updateVlcExecutablePath,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: OutlinedButton.icon(
+                              onPressed: () => _controller.updateVlcExecutablePath(_vlcPathController.text),
+                              icon: const Icon(Icons.save_rounded),
+                              label: const Text('VLC-Pfad speichern'),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          if ((_controller.lastVlcError ?? '').isNotEmpty)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(AppSpacing.sm),
+                              decoration: BoxDecoration(
+                                color: AppColors.error.withValues(alpha: 0.12),
+                                border: Border.all(color: AppColors.error),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'Letzter VLC-Fehler:\n${_controller.lastVlcError!}',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.error),
+                              ),
+                            ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Expanded(
+                            child: ListView.separated(
+                              itemCount: settings.length,
+                              itemBuilder: (context, index) => SettingSwitchTile(item: settings[index]),
+                              separatorBuilder: (context, index) => const Divider(),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

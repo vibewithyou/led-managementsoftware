@@ -113,18 +113,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ? const Center(child: Text('Keine Warnungen. System bereit.'))
                                     : ListView.separated(
                                         itemCount: alerts.length,
-                                        itemBuilder: (_, index) => ListTile(
-                                          contentPadding: EdgeInsets.zero,
-                                          leading: const Icon(Icons.warning_amber_rounded, color: AppColors.warning),
-                                          title: Text(alerts[index]),
-                                          subtitle: const Row(
-                                            children: [
-                                              Text('Priorität: Hoch'),
-                                              SizedBox(width: AppSpacing.xs),
-                                              StatusBadge(label: 'CHECK', type: StatusBadgeType.queued, compact: true),
-                                            ],
-                                          ),
-                                        ),
+                                        itemBuilder: (_, index) {
+                                          final isTransportError = alerts[index].toLowerCase().contains('transportfehler');
+                                          return ListTile(
+                                            contentPadding: EdgeInsets.zero,
+                                            leading: Icon(
+                                              isTransportError ? Icons.error_outline_rounded : Icons.warning_amber_rounded,
+                                              color: isTransportError ? AppColors.error : AppColors.warning,
+                                            ),
+                                            title: Text(
+                                              alerts[index],
+                                              style: isTransportError
+                                                  ? Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.error)
+                                                  : null,
+                                            ),
+                                            subtitle: Row(
+                                              children: [
+                                                Text(isTransportError ? 'Priorität: Kritisch' : 'Priorität: Hoch'),
+                                                const SizedBox(width: AppSpacing.xs),
+                                                StatusBadge(
+                                                  label: isTransportError ? 'ERROR' : 'CHECK',
+                                                  type: isTransportError ? StatusBadgeType.error : StatusBadgeType.queued,
+                                                  compact: true,
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
                                         separatorBuilder: (context, index) => const Divider(),
                                       ),
                               ),

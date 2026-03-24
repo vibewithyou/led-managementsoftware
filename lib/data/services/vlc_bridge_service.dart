@@ -4,6 +4,52 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+enum VlcTransportStatus {
+  ready,
+  starting,
+  playing,
+  error,
+  fileMissing,
+  stopped,
+}
+
+class VlcStatusSnapshot {
+  const VlcStatusSnapshot({
+    required this.status,
+    required this.operatorMessage,
+    required this.updatedAt,
+    this.technicalMessage,
+    this.filePath,
+    this.executablePath,
+    this.lastExitCode,
+  });
+
+  final VlcTransportStatus status;
+  final String operatorMessage;
+  final String? technicalMessage;
+  final String? filePath;
+  final String? executablePath;
+  final int? lastExitCode;
+  final DateTime updatedAt;
+}
+
+class VlcOperationException implements Exception {
+  const VlcOperationException({
+    required this.operatorMessage,
+    required this.technicalMessage,
+    this.status = VlcTransportStatus.error,
+  });
+
+  final String operatorMessage;
+  final String technicalMessage;
+  final VlcTransportStatus status;
+
+  @override
+  String toString() {
+    return '$operatorMessage ($technicalMessage)';
+  }
+}
+
 class VlcService {
   VlcService({String? executablePath}) : _executablePathOverride = executablePath;
 
@@ -13,6 +59,15 @@ class VlcService {
   String? _resolvedExecutablePath;
   bool _fullscreenOutputEnabled = true;
   bool _running = false;
+  VlcStatusSnapshot _status = VlcStatusSnapshot(
+    status: VlcTransportStatus.stopped,
+    operatorMessage: 'VLC gestoppt',
+    updatedAt: DateTime.now(),
+  );
+  final StreamController<VlcStatusSnapshot> _statusController = StreamController<VlcStatusSnapshot>.broadcast();
+
+  VlcStatusSnapshot get status => _status;
+  Stream<VlcStatusSnapshot> get statusStream => _statusController.stream;
 
   bool isRunning() {
     return _running && _process != null;
@@ -24,13 +79,27 @@ class VlcService {
       return;
     }
 
+    _emitStatus(
+      VlcTransportStatus.starting,
+      operatorMessage: 'VLC startet …',
+    );
     await _launchVlc();
   }
 
   Future<void> playFile(String path) async {
     final file = File(path);
     if (!await file.exists()) {
-      throw StateError('Videodatei nicht gefunden: $path');
+      _emitStatus(
+        VlcTransportStatus.fileMissing,
+        operatorMessage: 'Datei fehlt',
+        technicalMessage: 'Videodatei nicht gefunden: $path',
+        filePath: path,
+      );
+      throw VlcOperationException(
+        operatorMessage: 'Datei fehlt: $path',
+        technicalMessage: 'Videodatei nicht gefunden',
+        status: VlcTransportStatus.fileMissing,
+      );
     }
     if (isRunning()) {
       _log('Restarting VLC for new file: $path');
@@ -39,6 +108,11 @@ class VlcService {
       _log('VLC not running. Starting before playback.');
     }
 
+    _emitStatus(
+      VlcTransportStatus.starting,
+      operatorMessage: 'VLC startet Wiedergabe …',
+      filePath: path,
+    );
     await _launchVlc(filePath: path);
   }
 
@@ -47,6 +121,10 @@ class VlcService {
     if (process == null) {
       _running = false;
       _log('stop() skipped: VLC was not running.');
+      _emitStatus(
+        VlcTransportStatus.stopped,
+        operatorMessage: 'VLC gestoppt',
+      );
       return;
     }
 
@@ -62,6 +140,10 @@ class VlcService {
     } finally {
       _process = null;
       _running = false;
+      _emitStatus(
+        VlcTransportStatus.stopped,
+        operatorMessage: 'VLC gestoppt',
+      );
     }
   }
 
@@ -85,10 +167,25 @@ class VlcService {
 
     try {
       final process = await Process.start(executable, args, mode: ProcessStartMode.normal);
-      _attachProcess(process);
+      _attachProcess(process, filePath: filePath, executablePath: executable);
     } on ProcessException catch (error) {
       _running = false;
-      throw StateError('VLC konnte nicht gestartet werden: ${error.message}');
+      final looksLikeMissingInstall = error.errorCode == 2 ||
+          error.message.toLowerCase().contains('cannot find') ||
+          error.message.toLowerCase().contains('no such file');
+      final operatorMessage =
+          looksLikeMissingInstall ? 'VLC ist nicht installiert oder Pfad ist ungültig.' : 'VLC konnte nicht gestartet werden.';
+      _emitStatus(
+        VlcTransportStatus.error,
+        operatorMessage: operatorMessage,
+        technicalMessage: error.toString(),
+        filePath: filePath,
+        executablePath: executable,
+      );
+      throw VlcOperationException(
+        operatorMessage: operatorMessage,
+        technicalMessage: error.toString(),
+      );
     }
   }
 
@@ -111,8 +208,11 @@ class VlcService {
 
     for (final candidate in candidates) {
       if (candidate == 'vlc') {
-        _resolvedExecutablePath = candidate;
-        return candidate;
+        if (await _isExecutableOnPath(candidate)) {
+          _resolvedExecutablePath = candidate;
+          return candidate;
+        }
+        continue;
       }
 
       if (await File(candidate).exists()) {
@@ -121,12 +221,26 @@ class VlcService {
       }
     }
 
-    throw StateError('Keine VLC-Installation gefunden.');
+    _emitStatus(
+      VlcTransportStatus.error,
+      operatorMessage: 'VLC ist nicht installiert oder Pfad ist ungültig.',
+      technicalMessage: 'Keine VLC-Installation gefunden.',
+    );
+    throw const VlcOperationException(
+      operatorMessage: 'VLC ist nicht installiert oder Pfad ist ungültig.',
+      technicalMessage: 'Keine VLC-Installation gefunden.',
+    );
   }
 
-  void _attachProcess(Process process) {
+  void _attachProcess(Process process, {String? filePath, required String executablePath}) {
     _process = process;
     _running = true;
+    _emitStatus(
+      filePath == null ? VlcTransportStatus.ready : VlcTransportStatus.playing,
+      operatorMessage: filePath == null ? 'VLC bereit' : 'VLC spielt',
+      filePath: filePath,
+      executablePath: executablePath,
+    );
 
     process.stdout.transform(utf8.decoder).listen((output) {
       final normalized = output.trim();
@@ -148,13 +262,56 @@ class VlcService {
         if (identical(_process, process)) {
           _process = null;
           _running = false;
+          final crashed = code != 0 && code != 143;
+          _emitStatus(
+            crashed ? VlcTransportStatus.error : VlcTransportStatus.stopped,
+            operatorMessage: crashed ? 'VLC Fehler/Absturz erkannt.' : 'VLC gestoppt',
+            technicalMessage: 'VLC exit code: $code',
+            lastExitCode: code,
+            filePath: filePath,
+            executablePath: executablePath,
+          );
         }
       }),
     );
   }
 
+  Future<bool> _isExecutableOnPath(String executable) async {
+    final command = Platform.isWindows ? 'where' : 'which';
+    try {
+      final result = await Process.run(command, [executable]);
+      return result.exitCode == 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _emitStatus(
+    VlcTransportStatus status, {
+    required String operatorMessage,
+    String? technicalMessage,
+    String? filePath,
+    String? executablePath,
+    int? lastExitCode,
+  }) {
+    _status = VlcStatusSnapshot(
+      status: status,
+      operatorMessage: operatorMessage,
+      technicalMessage: technicalMessage,
+      filePath: filePath,
+      executablePath: executablePath ?? _resolvedExecutablePath,
+      lastExitCode: lastExitCode,
+      updatedAt: DateTime.now(),
+    );
+    _statusController.add(_status);
+  }
+
   void _log(String message) {
     debugPrint('[VlcService] $message');
+  }
+
+  void dispose() {
+    _statusController.close();
   }
 }
 
