@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:led_management_software/core/constants/app_spacing.dart';
 import 'package:led_management_software/core/theme/app_colors.dart';
+import 'package:led_management_software/features/live_control/model/live_action_config.dart';
 import 'package:led_management_software/features/settings/controller/settings_controller.dart';
 import 'package:led_management_software/features/settings/widgets/setting_switch_tile.dart';
 import 'package:led_management_software/shared/widgets/layout/page_header.dart';
@@ -36,7 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       animation: _controller,
       builder: (context, _) {
         final settings = _controller.playbackSettings;
-        final hotkeys = _controller.hotkeyBindings;
+        final actions = _controller.liveActions;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -62,101 +63,89 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
-                    flex: 3,
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: AppPanel(
-                            title: 'Globale Hotkeys',
-                            trailing: const StatusBadge(
-                              label: 'DESKTOP',
-                              type: StatusBadgeType.active,
-                              compact: true,
+                    flex: 4,
+                    child: AppPanel(
+                      title: 'Live-Aktionen verwalten',
+                      trailing: const StatusBadge(label: 'CONFIG', type: StatusBadgeType.active, compact: true),
+                      child: ReorderableListView.builder(
+                        itemCount: actions.length,
+                        onReorder: _controller.reorderActions,
+                        itemBuilder: (context, index) {
+                          final action = actions[index];
+                          return ListTile(
+                            key: ValueKey(action.id),
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(action.label),
+                            subtitle: Text('Gruppe: ${action.group.name} • Queue: ${action.queueBehavior.name}'),
+                            leading: CircleAvatar(
+                              backgroundColor: _colorFor(action.color).withValues(alpha: 0.2),
+                              child: Text('${index + 1}'),
                             ),
-                            child: ListView.separated(
-                              itemCount: hotkeys.length,
-                              separatorBuilder: (context, index) => const Divider(),
-                              itemBuilder: (context, index) {
-                                final binding = hotkeys[index];
-                                return ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: Text(binding.eventLabel),
-                                  subtitle: Text(binding.description),
-                                  trailing: SizedBox(
-                                    width: 120,
+                            trailing: SizedBox(
+                              width: 320,
+                              child: Row(
+                                children: [
+                                  Expanded(
                                     child: DropdownButtonFormField<String>(
-                                      initialValue: binding.shortcutLabel,
-                                      decoration: const InputDecoration(
-                                        isDense: true,
-                                        border: OutlineInputBorder(),
-                                      ),
+                                      initialValue: action.hotkey,
+                                      isDense: true,
+                                      decoration: const InputDecoration(border: OutlineInputBorder()),
                                       items: _controller.availableHotkeys
-                                          .map(
-                                            (hotkey) => DropdownMenuItem<String>(
-                                              value: hotkey,
-                                              child: Text(hotkey),
-                                            ),
-                                          )
+                                          .map((hotkey) => DropdownMenuItem<String>(value: hotkey, child: Text(hotkey)))
                                           .toList(growable: false),
                                       onChanged: (value) {
-                                        if (value == null) {
-                                          return;
-                                        }
-                                        _controller.updateHotkey(binding.eventLabel, value);
+                                        if (value == null) return;
+                                        _controller.updateHotkey(action.label, value);
                                       },
                                     ),
                                   ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        Expanded(
-                          child: AppPanel(
-                            title: 'UI / Operator',
-                            child: Column(
-                              children: [
-                                const ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: Text('Quick-Trigger Hotkeys'),
-                                  trailing: StatusBadge(label: 'ACTIVE', type: StatusBadgeType.active, compact: true),
-                                ),
-                                const ListTile(contentPadding: EdgeInsets.zero, title: Text('Große Bedienflächen'), trailing: Text('Desktop')),
-                                const ListTile(contentPadding: EdgeInsets.zero, title: Text('Theme'), trailing: Text('Dark Pro')),
-                                const SizedBox(height: AppSpacing.sm),
-                                const EmptyStateCard(
-                                  title: 'Konfiguration aktiv',
-                                  message: 'Globale Funktionstasten sind für den Windows-Desktop registrierbar und entprellt.',
-                                  icon: Icons.keyboard_command_key_rounded,
-                                ),
-                                const SizedBox(height: AppSpacing.sm),
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    'Hinweis: Bei Doppelbelegung werden Hotkeys automatisch getauscht.',
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                                  const SizedBox(width: 8),
+                                  DropdownButton<LiveActionColorSemantic>(
+                                    value: action.color,
+                                    items: LiveActionColorSemantic.values
+                                        .map(
+                                          (value) => DropdownMenuItem(
+                                            value: value,
+                                            child: Text(value.name),
+                                          ),
+                                        )
+                                        .toList(growable: false),
+                                    onChanged: (value) {
+                                      if (value == null) return;
+                                      _controller.updateActionColor(action.id, value);
+                                    },
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 8),
+                                  Switch(
+                                    value: action.enabled,
+                                    onChanged: (value) => _controller.updateActionEnabled(action.id, value),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ),
-                      ],
+                          );
+                        },
+                      ),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: AppPanel(
-                      title: 'Output Profile',
+                      title: 'UI / Operator',
                       child: Column(
-                        children: const [
-                          ListTile(contentPadding: EdgeInsets.zero, title: Text('Standard FPS'), trailing: Text('59.94')),
-                          ListTile(contentPadding: EdgeInsets.zero, title: Text('Canvas'), trailing: Text('1920x240')),
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text('Audio'),
-                            trailing: StatusBadge(label: 'DISABLED', type: StatusBadgeType.disabled, compact: true),
+                        children: [
+                          const EmptyStateCard(
+                            title: 'Live-Aktionen konfigurierbar',
+                            message: 'Reihenfolge, Aktivierung, Hotkeys und Farbsemantik werden lokal gespeichert.',
+                            icon: Icons.tune_rounded,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Migration: Standard-Events werden beim ersten Laden automatisch erzeugt.',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                            ),
                           ),
                         ],
                       ),
@@ -169,5 +158,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       },
     );
+  }
+
+  Color _colorFor(LiveActionColorSemantic semantic) {
+    return switch (semantic) {
+      LiveActionColorSemantic.success => AppColors.success,
+      LiveActionColorSemantic.warning => AppColors.warning,
+      LiveActionColorSemantic.danger => AppColors.error,
+      LiveActionColorSemantic.neutral => AppColors.disabled,
+      _ => AppColors.primary,
+    };
   }
 }

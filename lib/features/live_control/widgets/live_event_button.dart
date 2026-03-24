@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:led_management_software/core/theme/app_colors.dart';
+import 'package:led_management_software/domain/enums/live_action_type.dart';
+import 'package:led_management_software/features/live_control/model/live_action_config.dart';
 import 'package:led_management_software/shared/widgets/controls/large_action_button.dart';
 
 class LiveEventButton extends StatelessWidget {
   const LiveEventButton({
-    required this.label,
+    required this.action,
     required this.onPressed,
-    this.semanticColor = AppColors.primary,
-    this.hotkeyLabel,
     super.key,
   });
 
-  final String label;
+  final LiveActionConfig action;
   final VoidCallback onPressed;
-  final Color semanticColor;
-  final String? hotkeyLabel;
 
   @override
   Widget build(BuildContext context) {
+    final semanticColor = _colorFor(action.color);
+
     return Stack(
       children: [
         SizedBox(
@@ -28,14 +28,14 @@ class LiveEventButton extends StatelessWidget {
               colorScheme: Theme.of(context).colorScheme.copyWith(primary: semanticColor),
             ),
             child: LargeActionButton(
-              label: label,
-              icon: _iconForLabel(label),
+              label: action.label,
+              icon: _iconForAction(action),
               onPressed: onPressed,
-              destructive: label == 'Stop',
+              destructive: action.actionType == LiveActionType.stopCue,
             ),
           ),
         ),
-        if (hotkeyLabel != null)
+        if (action.hotkey != null)
           Positioned(
             top: 8,
             right: 8,
@@ -49,7 +49,7 @@ class LiveEventButton extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   child: Text(
-                    hotkeyLabel!,
+                    action.hotkey!,
                     style: const TextStyle(
                       color: AppColors.textPrimary,
                       fontWeight: FontWeight.w700,
@@ -64,30 +64,29 @@ class LiveEventButton extends StatelessWidget {
     );
   }
 
-  IconData _iconForLabel(String value) {
-    switch (value) {
-      case 'Tor':
-        return Icons.sports_handball_rounded;
-      case 'Zeitstrafe':
-        return Icons.timer_rounded;
-      case 'Gelbe Karte':
-        return Icons.style_rounded;
-      case 'Rote Karte':
-        return Icons.report_rounded;
-      case 'Timeout':
-        return Icons.pause_circle_filled_rounded;
-      case 'Wischer':
-        return Icons.cleaning_services_rounded;
-      case 'Sponsor Loop':
-        return Icons.autorenew_rounded;
-      case 'Black Screen':
-        return Icons.tv_off_rounded;
-      case 'Stop':
-        return Icons.stop_rounded;
-      case 'Nächster Spieler':
-        return Icons.skip_next_rounded;
-      default:
-        return Icons.bolt_rounded;
-    }
+  Color _colorFor(LiveActionColorSemantic semantic) {
+    return switch (semantic) {
+      LiveActionColorSemantic.success => AppColors.success,
+      LiveActionColorSemantic.warning => AppColors.warning,
+      LiveActionColorSemantic.danger => AppColors.error,
+      LiveActionColorSemantic.neutral => AppColors.disabled,
+      _ => AppColors.primary,
+    };
+  }
+
+  IconData _iconForAction(LiveActionConfig action) {
+    return switch (action.id) {
+      'goal' => Icons.sports_handball_rounded,
+      'penalty' => Icons.timer_rounded,
+      'yellow_card' => Icons.style_rounded,
+      'red_card' => Icons.report_rounded,
+      'timeout' => Icons.pause_circle_filled_rounded,
+      'wiper' => Icons.cleaning_services_rounded,
+      'sponsor_loop' => Icons.autorenew_rounded,
+      'black_screen' => Icons.tv_off_rounded,
+      'stop' => Icons.stop_rounded,
+      'next_player' => Icons.skip_next_rounded,
+      _ => Icons.bolt_rounded,
+    };
   }
 }
