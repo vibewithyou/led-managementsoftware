@@ -58,6 +58,17 @@ class MediaLibraryRepositoryImpl implements MediaLibraryRepository {
     }).toList(growable: false);
   }
 
+
+  @override
+  Future<void> deleteAsset(String id) async {
+    final all = await getAllAssets();
+    final target = all.where((asset) => asset.id == id).cast<MediaAsset?>().firstWhere((item) => item != null, orElse: () => null);
+    if (target == null) {
+      return;
+    }
+    await saveAsset(target.copyWith(isActive: false, updatedAt: DateTime.now()));
+  }
+
   @override
   Future<void> saveAsset(MediaAssetEntity asset) async {
     try {

@@ -5,13 +5,18 @@ import 'package:led_management_software/core/theme/app_durations.dart';
 import 'package:led_management_software/core/theme/app_radius.dart';
 import 'package:led_management_software/core/theme/app_shadows.dart';
 import 'package:led_management_software/domain/entities/media_asset_entity.dart';
+import 'package:led_management_software/features/media_library/model/media_library_view_models.dart';
 import 'package:led_management_software/shared/utils/media_formatters.dart';
+import 'package:led_management_software/shared/widgets/surfaces/status_badge.dart';
 
 class MediaClipTile extends StatefulWidget {
   const MediaClipTile({
     required this.asset,
     required this.isSelected,
     required this.onTap,
+    required this.fileStatus,
+    required this.onEdit,
+    required this.onDelete,
     this.animateIn = false,
     super.key,
   });
@@ -19,8 +24,9 @@ class MediaClipTile extends StatefulWidget {
   final MediaAssetEntity asset;
   final bool isSelected;
   final VoidCallback onTap;
-
-  /// When true the tile fades in from 0 → 1 on first build (newly imported).
+  final MediaFileStatus fileStatus;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
   final bool animateIn;
 
   @override
@@ -35,15 +41,9 @@ class _MediaClipTileState extends State<MediaClipTile> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
-    _fadeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-      value: widget.animateIn ? 0.0 : 1.0,
-    );
+    _fadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 500), value: widget.animateIn ? 0.0 : 1.0);
     _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
-
     if (widget.animateIn) {
-      // Start fade after the frame is built to avoid jank.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _fadeController.forward();
       });
@@ -84,6 +84,22 @@ class _MediaClipTileState extends State<MediaClipTile> with SingleTickerProvider
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    children: [
+                      _statusBadge(widget.fileStatus),
+                      const Spacer(),
+                      PopupMenuButton<String>(
+                        onSelected: (value) {
+                          if (value == 'edit') widget.onEdit();
+                          if (value == 'delete') widget.onDelete();
+                        },
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(value: 'edit', child: Text('Bearbeiten')),
+                          PopupMenuItem(value: 'delete', child: Text('Deaktivieren')),
+                        ],
+                      ),
+                    ],
+                  ),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(AppRadius.sm),
                     child: Container(
@@ -105,15 +121,9 @@ class _MediaClipTileState extends State<MediaClipTile> with SingleTickerProvider
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          widget.asset.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
+                        child: Text(widget.asset.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium),
                       ),
-                      if (widget.asset.isCueLocked)
-                        const Icon(Icons.lock_rounded, size: 16, color: AppColors.warning),
+                      if (widget.asset.isCueLocked) const Icon(Icons.lock_rounded, size: 16, color: AppColors.warning),
                       if (widget.asset.isFavorite)
                         const Padding(
                           padding: EdgeInsets.only(left: 6),
@@ -122,59 +132,11 @@ class _MediaClipTileState extends State<MediaClipTile> with SingleTickerProvider
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    widget.asset.category.name,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.secondary),
-                  ),
+                  Text(widget.asset.category.name, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.secondary)),
                   const SizedBox(height: 2),
-                  Text(
-                    'Dauer ${formatDurationMs(widget.asset.durationMs)}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
-                  ),
-                  if (widget.asset.metadataIncomplete)
-                    Text(
-                      'Metadaten unvollständig',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.warning),
-                    ),
-                  if ((widget.asset.sponsorName ?? '').isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text('Sponsor: ${widget.asset.sponsorName}', style: Theme.of(context).textTheme.bodySmall),
-                    ),
-                  if ((widget.asset.playerName ?? '').isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text('Spieler: ${widget.asset.playerName}', style: Theme.of(context).textTheme.bodySmall),
-                    ),
-                  if (widget.asset.tags.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: widget.asset.tags
-                            .take(4)
-                            .map(
-                              (tag) => Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                                  border: Border.all(color: AppColors.border),
-                                ),
-                                child: Text(tag, style: Theme.of(context).textTheme.bodySmall),
-                              ),
-                            )
-                            .toList(growable: false),
-                      ),
-                    ),
+                  Text('Dauer ${formatDurationMs(widget.asset.durationMs)}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted)),
                   const SizedBox(height: 8),
-                  Text(
-                    widget.asset.fileName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
-                  ),
+                  Text(widget.asset.fileName, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted)),
                 ],
               ),
             ),
@@ -182,5 +144,13 @@ class _MediaClipTileState extends State<MediaClipTile> with SingleTickerProvider
         ),
       ),
     );
+  }
+
+  Widget _statusBadge(MediaFileStatus status) {
+    return switch (status) {
+      MediaFileStatus.available => const StatusBadge(label: 'Verfügbar', type: StatusBadgeType.ready, compact: true),
+      MediaFileStatus.missing => const StatusBadge(label: 'Datei fehlt', type: StatusBadgeType.error, compact: true),
+      MediaFileStatus.metadataIncomplete => const StatusBadge(label: 'Metadaten unvollständig', type: StatusBadgeType.queued, compact: true),
+    };
   }
 }

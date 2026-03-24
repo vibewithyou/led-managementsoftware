@@ -10,6 +10,8 @@ abstract class MediaLibraryRepository {
 
   Future<void> saveAsset(MediaAssetEntity asset);
 
+  Future<void> deleteAsset(String id);
+
   Future<MediaAssetImportResult> importAsset({
     required String filePath,
     required String fileName,

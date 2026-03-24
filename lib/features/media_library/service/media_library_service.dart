@@ -1,5 +1,6 @@
 import 'package:led_management_software/data/repositories/media_library_repository_impl.dart';
 import 'package:led_management_software/domain/entities/media_asset_entity.dart';
+import 'package:led_management_software/domain/enums/cue_type.dart';
 import 'package:led_management_software/domain/enums/media_category.dart';
 import 'package:led_management_software/domain/repositories/media_library_repository.dart';
 
@@ -52,12 +53,50 @@ class MediaLibraryService {
     );
   }
 
+  Future<void> updateClip({
+    required MediaAssetEntity asset,
+    required String title,
+    required MediaCategory category,
+    required List<String> tags,
+    required CueType cueType,
+    required bool isCueLocked,
+    required bool isFavorite,
+    String? sponsorName,
+    String? playerName,
+  }) async {
+    await _repository.saveAsset(
+      asset.copyWith(
+        title: title.trim(),
+        category: category,
+        tags: tags,
+        cueType: cueType,
+        isCueLocked: isCueLocked,
+        isFavorite: isFavorite,
+        sponsorName: _normalizeOptional(sponsorName),
+        playerName: _normalizeOptional(playerName),
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
+
+  Future<void> deleteClip(String id) {
+    return _repository.deleteAsset(id);
+  }
+
   String _extractExtension(String fileName) {
     final dotIndex = fileName.lastIndexOf('.');
     if (dotIndex <= 0 || dotIndex == fileName.length - 1) {
       return '';
     }
     return fileName.substring(dotIndex + 1).toLowerCase();
+  }
+
+  String? _normalizeOptional(String? value) {
+    if (value == null) {
+      return null;
+    }
+    final normalized = value.trim();
+    return normalized.isEmpty ? null : normalized;
   }
 }
 
