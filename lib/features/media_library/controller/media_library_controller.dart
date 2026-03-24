@@ -15,6 +15,7 @@ class MediaLibraryController extends ChangeNotifier {
   MediaCategory? _selectedCategory;
   MediaAssetEntity? _selectedAsset;
   String? _error;
+  String? _lastImportWarning;
 
   /// The id of the most recently imported asset – used to trigger FadeIn.
   String? _lastImportedId;
@@ -26,6 +27,7 @@ class MediaLibraryController extends ChangeNotifier {
   MediaAssetEntity? get selectedAsset => _selectedAsset;
   String? get error => _error;
   String? get lastImportedId => _lastImportedId;
+  String? get lastImportWarning => _lastImportWarning;
 
   Future<void> load() async {
     _isLoading = true;
@@ -62,7 +64,7 @@ class MediaLibraryController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> importAsset({
+  Future<MediaImportResultModel> importAsset({
     required String filePath,
     required String fileName,
     required String title,
@@ -75,10 +77,11 @@ class MediaLibraryController extends ChangeNotifier {
     String? playerName,
   }) async {
     _error = null;
+    _lastImportWarning = null;
     notifyListeners();
 
     try {
-      await _service.importClip(
+      final result = await _service.importClip(
         filePath: filePath,
         fileName: fileName,
         title: title,
@@ -91,13 +94,16 @@ class MediaLibraryController extends ChangeNotifier {
         isFavorite: isFavorite,
       );
 
+      _lastImportWarning = result.warning;
+
       // Reload and mark the newest asset for FadeIn animation.
       final before = _allAssets.map((a) => a.id).toSet();
       await _loadSilent();
       final newAsset = _filteredAssets.where((a) => !before.contains(a.id)).firstOrNull;
-      _lastImportedId = newAsset?.id;
+      _lastImportedId = newAsset?.id ?? result.assetId;
       _selectedAsset = newAsset ?? (_filteredAssets.isNotEmpty ? _filteredAssets.first : null);
       notifyListeners();
+      return result;
     } catch (exception) {
       _error = exception.toString();
       notifyListeners();
@@ -144,5 +150,4 @@ class MediaLibraryController extends ChangeNotifier {
       _selectedAsset = _filteredAssets.isNotEmpty ? _filteredAssets.first : null;
     }
   }
-
 }

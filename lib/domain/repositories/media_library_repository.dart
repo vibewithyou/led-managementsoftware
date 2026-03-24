@@ -10,7 +10,7 @@ abstract class MediaLibraryRepository {
 
   Future<void> saveAsset(MediaAssetEntity asset);
 
-  Future<void> importAsset({
+  Future<MediaAssetImportResult> importAsset({
     required String filePath,
     required String fileName,
     required String title,
@@ -22,4 +22,18 @@ abstract class MediaLibraryRepository {
     required bool isFavorite,
     required String cueTypeValue,
   });
+}
+
+class MediaAssetImportResult {
+  const MediaAssetImportResult({
+    required this.assetId,
+    required this.durationMs,
+    required this.metadataIncomplete,
+    required this.warning,
+  });
+
+  final String assetId;
+  final int durationMs;
+  final bool metadataIncomplete;
+  final String? warning;
 }

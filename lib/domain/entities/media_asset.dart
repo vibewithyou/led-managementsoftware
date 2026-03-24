@@ -22,6 +22,11 @@ class MediaAsset {
     required this.createdAt,
     required this.updatedAt,
     required this.isActive,
+    required this.metadataIncomplete,
+    required this.fileSizeBytes,
+    required this.fileExtension,
+    required this.importedAt,
+    required this.lastValidatedAt,
   });
 
   factory MediaAsset.empty() {
@@ -44,10 +49,16 @@ class MediaAsset {
       createdAt: now,
       updatedAt: now,
       isActive: true,
+      metadataIncomplete: true,
+      fileSizeBytes: null,
+      fileExtension: null,
+      importedAt: now,
+      lastValidatedAt: null,
     );
   }
 
   factory MediaAsset.fromJson(Map<String, dynamic> json) {
+    final createdAt = DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
     return MediaAsset(
       id: json['id'] as String? ?? '',
       title: json['title'] as String? ?? '',
@@ -65,9 +76,14 @@ class MediaAsset {
       cueType: CueTypeX.fromValue(json['cueType'] as String?),
       isCueLocked: json['isCueLocked'] as bool? ?? false,
       isFavorite: json['isFavorite'] as bool? ?? false,
-      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
+      createdAt: createdAt,
       updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
       isActive: json['isActive'] as bool? ?? true,
+      metadataIncomplete: json['metadataIncomplete'] as bool? ?? ((json['durationMs'] as int? ?? 0) <= 0),
+      fileSizeBytes: json['fileSizeBytes'] as int?,
+      fileExtension: json['fileExtension'] as String?,
+      importedAt: DateTime.tryParse(json['importedAt'] as String? ?? '') ?? createdAt,
+      lastValidatedAt: DateTime.tryParse(json['lastValidatedAt'] as String? ?? ''),
     );
   }
 
@@ -88,6 +104,11 @@ class MediaAsset {
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isActive;
+  final bool metadataIncomplete;
+  final int? fileSizeBytes;
+  final String? fileExtension;
+  final DateTime importedAt;
+  final DateTime? lastValidatedAt;
 
   MediaAsset copyWith({
     String? id,
@@ -107,6 +128,11 @@ class MediaAsset {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isActive,
+    bool? metadataIncomplete,
+    Object? fileSizeBytes = _unset,
+    Object? fileExtension = _unset,
+    DateTime? importedAt,
+    Object? lastValidatedAt = _unset,
   }) {
     return MediaAsset(
       id: id ?? this.id,
@@ -126,6 +152,11 @@ class MediaAsset {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isActive: isActive ?? this.isActive,
+      metadataIncomplete: metadataIncomplete ?? this.metadataIncomplete,
+      fileSizeBytes: fileSizeBytes == _unset ? this.fileSizeBytes : fileSizeBytes as int?,
+      fileExtension: fileExtension == _unset ? this.fileExtension : fileExtension as String?,
+      importedAt: importedAt ?? this.importedAt,
+      lastValidatedAt: lastValidatedAt == _unset ? this.lastValidatedAt : lastValidatedAt as DateTime?,
     );
   }
 
@@ -148,6 +179,11 @@ class MediaAsset {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'isActive': isActive,
+      'metadataIncomplete': metadataIncomplete,
+      'fileSizeBytes': fileSizeBytes,
+      'fileExtension': fileExtension,
+      'importedAt': importedAt.toIso8601String(),
+      'lastValidatedAt': lastValidatedAt?.toIso8601String(),
     };
   }
 
@@ -172,7 +208,12 @@ class MediaAsset {
             isFavorite == other.isFavorite &&
             createdAt == other.createdAt &&
             updatedAt == other.updatedAt &&
-            isActive == other.isActive;
+            isActive == other.isActive &&
+            metadataIncomplete == other.metadataIncomplete &&
+            fileSizeBytes == other.fileSizeBytes &&
+            fileExtension == other.fileExtension &&
+            importedAt == other.importedAt &&
+            lastValidatedAt == other.lastValidatedAt;
   }
 
   @override
@@ -195,6 +236,11 @@ class MediaAsset {
       createdAt,
       updatedAt,
       isActive,
+      metadataIncomplete,
+      fileSizeBytes,
+      fileExtension,
+      importedAt,
+      lastValidatedAt,
     );
   }
 }

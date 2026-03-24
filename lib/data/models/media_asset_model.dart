@@ -22,6 +22,11 @@ class MediaAssetModel {
     required this.createdAt,
     required this.updatedAt,
     required this.isActive,
+    required this.metadataIncomplete,
+    required this.fileSizeBytes,
+    required this.fileExtension,
+    required this.importedAt,
+    required this.lastValidatedAt,
   });
 
   factory MediaAssetModel.fromEntity(MediaAsset entity) {
@@ -43,10 +48,16 @@ class MediaAssetModel {
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
       isActive: entity.isActive,
+      metadataIncomplete: entity.metadataIncomplete,
+      fileSizeBytes: entity.fileSizeBytes,
+      fileExtension: entity.fileExtension,
+      importedAt: entity.importedAt,
+      lastValidatedAt: entity.lastValidatedAt,
     );
   }
 
   factory MediaAssetModel.fromJson(Map<String, dynamic> json) {
+    final createdAt = DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
     return MediaAssetModel(
       id: json['id'] as String? ?? '',
       title: json['title'] as String? ?? '',
@@ -64,9 +75,14 @@ class MediaAssetModel {
       cueType: CueTypeX.fromValue(json['cueType'] as String?),
       isCueLocked: json['isCueLocked'] as bool? ?? false,
       isFavorite: json['isFavorite'] as bool? ?? false,
-      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
+      createdAt: createdAt,
       updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
       isActive: json['isActive'] as bool? ?? true,
+      metadataIncomplete: json['metadataIncomplete'] as bool? ?? ((json['durationMs'] as int? ?? 0) <= 0),
+      fileSizeBytes: json['fileSizeBytes'] as int?,
+      fileExtension: json['fileExtension'] as String?,
+      importedAt: DateTime.tryParse(json['importedAt'] as String? ?? '') ?? createdAt,
+      lastValidatedAt: DateTime.tryParse(json['lastValidatedAt'] as String? ?? ''),
     );
   }
 
@@ -87,6 +103,11 @@ class MediaAssetModel {
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isActive;
+  final bool metadataIncomplete;
+  final int? fileSizeBytes;
+  final String? fileExtension;
+  final DateTime importedAt;
+  final DateTime? lastValidatedAt;
 
   MediaAsset toEntity() {
     return MediaAsset(
@@ -107,6 +128,11 @@ class MediaAssetModel {
       createdAt: createdAt,
       updatedAt: updatedAt,
       isActive: isActive,
+      metadataIncomplete: metadataIncomplete,
+      fileSizeBytes: fileSizeBytes,
+      fileExtension: fileExtension,
+      importedAt: importedAt,
+      lastValidatedAt: lastValidatedAt,
     );
   }
 
@@ -129,6 +155,11 @@ class MediaAssetModel {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'isActive': isActive,
+      'metadataIncomplete': metadataIncomplete,
+      'fileSizeBytes': fileSizeBytes,
+      'fileExtension': fileExtension,
+      'importedAt': importedAt.toIso8601String(),
+      'lastValidatedAt': lastValidatedAt?.toIso8601String(),
     };
   }
 }

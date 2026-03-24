@@ -5,6 +5,7 @@ import 'package:led_management_software/core/theme/app_durations.dart';
 import 'package:led_management_software/core/theme/app_radius.dart';
 import 'package:led_management_software/core/theme/app_shadows.dart';
 import 'package:led_management_software/domain/entities/media_asset_entity.dart';
+import 'package:led_management_software/shared/utils/media_formatters.dart';
 
 class MediaClipTile extends StatefulWidget {
   const MediaClipTile({
@@ -125,6 +126,16 @@ class _MediaClipTileState extends State<MediaClipTile> with SingleTickerProvider
                     widget.asset.category.name,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.secondary),
                   ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Dauer ${formatDurationMs(widget.asset.durationMs)}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                  ),
+                  if (widget.asset.metadataIncomplete)
+                    Text(
+                      'Metadaten unvollständig',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.warning),
+                    ),
                   if ((widget.asset.sponsorName ?? '').isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),

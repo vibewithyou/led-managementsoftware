@@ -3,16 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:led_management_software/core/constants/app_spacing.dart';
 import 'package:led_management_software/core/theme/app_colors.dart';
 import 'package:led_management_software/core/theme/app_durations.dart';
-import 'package:led_management_software/domain/enums/cue_type.dart';
 import 'package:led_management_software/domain/enums/media_category.dart';
 import 'package:led_management_software/features/media_library/controller/media_library_controller.dart';
 import 'package:led_management_software/features/media_library/widgets/media_clip_tile.dart';
 import 'package:led_management_software/features/media_library/widgets/media_import_dialog.dart';
+import 'package:led_management_software/shared/utils/media_formatters.dart';
 import 'package:led_management_software/shared/widgets/inputs/search_input.dart';
 import 'package:led_management_software/shared/widgets/layout/page_header.dart';
 import 'package:led_management_software/shared/widgets/surfaces/app_panel.dart';
 
-/// Main media library workspace for clip import, search, filtering and detail preview.
 class MediaLibraryScreen extends StatefulWidget {
   const MediaLibraryScreen({super.key});
 
@@ -187,13 +186,17 @@ class _MediaLibraryScreenState extends State<MediaLibraryScreen> {
         _detailRow(context, 'Titel', selected.title),
         _detailRow(context, 'Kategorie', selected.category.name),
         _detailRow(context, 'CueType', selected.cueType.name),
+        _detailRow(context, 'Dauer', formatDurationMs(selected.durationMs)),
         _detailRow(context, 'Datei', selected.fileName),
+        _detailRow(context, 'Typ', (selected.fileExtension ?? 'unknown').toUpperCase()),
+        _detailRow(context, 'Dateigröße', formatFileSize(selected.fileSizeBytes)),
         _detailRow(context, 'Pfad', selected.filePath),
         _detailRow(context, 'Sponsor', selected.sponsorName ?? '-'),
         _detailRow(context, 'Spieler', selected.playerName ?? '-'),
         _detailRow(context, 'Tags', selected.tags.join(', ').isEmpty ? '-' : selected.tags.join(', ')),
         _detailRow(context, 'Gesperrt', selected.isCueLocked ? 'Ja' : 'Nein'),
         _detailRow(context, 'Favorit', selected.isFavorite ? 'Ja' : 'Nein'),
+        _detailRow(context, 'Metadaten', selected.metadataIncomplete ? 'Unvollständig' : 'Vollständig'),
       ],
     );
   }
@@ -216,15 +219,9 @@ class _MediaLibraryScreenState extends State<MediaLibraryScreen> {
   }
 
   int _gridCountForWidth(double width) {
-    if (width > 1850) {
-      return 4;
-    }
-    if (width > 1450) {
-      return 3;
-    }
-    if (width > 980) {
-      return 2;
-    }
+    if (width > 1850) return 4;
+    if (width > 1450) return 3;
+    if (width > 980) return 2;
     return 1;
   }
 
@@ -260,7 +257,7 @@ class _MediaLibraryScreenState extends State<MediaLibraryScreen> {
     }
 
     try {
-      await _controller.importAsset(
+      final importOutcome = await _controller.importAsset(
         filePath: filePath,
         fileName: fileName,
         title: importResult.title,
@@ -283,13 +280,24 @@ class _MediaLibraryScreenState extends State<MediaLibraryScreen> {
             children: [
               const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
               const SizedBox(width: 8),
-              Expanded(child: Text('"${importResult.title}" wurde importiert.')),
+              Expanded(
+                child: Text('"${importResult.title}" importiert · Dauer ${formatDurationMs(importOutcome.durationMs)}'),
+              ),
             ],
           ),
           backgroundColor: const Color(0xFF1C6B3A),
           duration: const Duration(seconds: 3),
         ),
       );
+
+      if (importOutcome.warning != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(importOutcome.warning!),
+            backgroundColor: AppColors.warning,
+          ),
+        );
+      }
     } catch (exception) {
       if (!mounted) {
         return;

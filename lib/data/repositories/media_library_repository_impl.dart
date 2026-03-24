@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:isar/isar.dart';
 import 'package:led_management_software/data/local/isar/collections/isar_media_asset_record.dart';
 import 'package:led_management_software/data/local/isar/isar_database.dart';
+import 'package:led_management_software/data/services/video_metadata_service.dart';
 import 'package:led_management_software/domain/entities/media_asset.dart';
 import 'package:led_management_software/domain/entities/media_asset_entity.dart';
 import 'package:led_management_software/domain/enums/cue_type.dart';
@@ -11,7 +12,10 @@ import 'package:led_management_software/domain/enums/team_type.dart';
 import 'package:led_management_software/domain/repositories/media_library_repository.dart';
 
 class MediaLibraryRepositoryImpl implements MediaLibraryRepository {
-  MediaLibraryRepositoryImpl();
+  MediaLibraryRepositoryImpl({VideoMetadataService? metadataService})
+      : _metadataService = metadataService ?? VideoMetadataService();
+
+  final VideoMetadataService _metadataService;
 
   @override
   Future<List<MediaAssetEntity>> getAllAssets() async {
@@ -59,10 +63,7 @@ class MediaLibraryRepositoryImpl implements MediaLibraryRepository {
     try {
       final isar = await IsarDatabase.instance.database;
       await isar.writeTxn(() async {
-        final existing = await isar.isarMediaAssetRecords
-            .filter()
-            .externalIdEqualTo(asset.id)
-            .findFirst();
+        final existing = await isar.isarMediaAssetRecords.filter().externalIdEqualTo(asset.id).findFirst();
 
         final record = existing ?? IsarMediaAssetRecord();
         record.externalId = asset.id;
@@ -79,7 +80,7 @@ class MediaLibraryRepositoryImpl implements MediaLibraryRepository {
   }
 
   @override
-  Future<void> importAsset({
+  Future<MediaAssetImportResult> importAsset({
     required String filePath,
     required String fileName,
     required String title,
@@ -93,6 +94,7 @@ class MediaLibraryRepositoryImpl implements MediaLibraryRepository {
   }) async {
     final now = DateTime.now();
     final nextId = 'media_${now.microsecondsSinceEpoch}';
+    final metadata = await _metadataService.analyzeFile(filePath: filePath, fileName: fileName);
 
     final entity = MediaAsset(
       id: nextId,
@@ -100,7 +102,7 @@ class MediaLibraryRepositoryImpl implements MediaLibraryRepository {
       filePath: filePath,
       fileName: fileName,
       thumbnailPath: '',
-      durationMs: 0,
+      durationMs: metadata.durationMs,
       category: category,
       tags: tags,
       sponsorName: _cleanOptional(sponsorName),
@@ -112,9 +114,21 @@ class MediaLibraryRepositoryImpl implements MediaLibraryRepository {
       createdAt: now,
       updatedAt: now,
       isActive: true,
+      metadataIncomplete: metadata.metadataIncomplete,
+      fileSizeBytes: metadata.fileSizeBytes,
+      fileExtension: metadata.fileExtension,
+      importedAt: now,
+      lastValidatedAt: metadata.lastValidatedAt,
     );
 
     await saveAsset(entity);
+
+    return MediaAssetImportResult(
+      assetId: nextId,
+      durationMs: metadata.durationMs,
+      metadataIncomplete: metadata.metadataIncomplete,
+      warning: metadata.warning,
+    );
   }
 
   Future<void> _seedIfEmpty() async {
@@ -144,6 +158,11 @@ class MediaLibraryRepositoryImpl implements MediaLibraryRepository {
         createdAt: now,
         updatedAt: now,
         isActive: true,
+        metadataIncomplete: false,
+        fileSizeBytes: null,
+        fileExtension: 'mp4',
+        importedAt: now,
+        lastValidatedAt: now,
       ),
       MediaAsset(
         id: 'seed_2',
@@ -163,6 +182,11 @@ class MediaLibraryRepositoryImpl implements MediaLibraryRepository {
         createdAt: now,
         updatedAt: now,
         isActive: true,
+        metadataIncomplete: false,
+        fileSizeBytes: null,
+        fileExtension: 'mov',
+        importedAt: now,
+        lastValidatedAt: now,
       ),
     ];
 

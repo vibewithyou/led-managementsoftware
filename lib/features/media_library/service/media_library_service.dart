@@ -14,7 +14,7 @@ class MediaLibraryService {
     return _repository.getAllAssets();
   }
 
-  Future<void> importClip({
+  Future<MediaImportResultModel> importClip({
     required String filePath,
     required String fileName,
     required String title,
@@ -31,7 +31,7 @@ class MediaLibraryService {
       throw ArgumentError('Nur Videodateien erlaubt: ${allowedExtensions.join(', ')}');
     }
 
-    await _repository.importAsset(
+    final result = await _repository.importAsset(
       filePath: filePath,
       fileName: fileName,
       title: title,
@@ -43,6 +43,13 @@ class MediaLibraryService {
       isCueLocked: isCueLocked,
       isFavorite: isFavorite,
     );
+
+    return MediaImportResultModel(
+      assetId: result.assetId,
+      durationMs: result.durationMs,
+      metadataIncomplete: result.metadataIncomplete,
+      warning: result.warning,
+    );
   }
 
   String _extractExtension(String fileName) {
@@ -52,4 +59,18 @@ class MediaLibraryService {
     }
     return fileName.substring(dotIndex + 1).toLowerCase();
   }
+}
+
+class MediaImportResultModel {
+  const MediaImportResultModel({
+    required this.assetId,
+    required this.durationMs,
+    required this.metadataIncomplete,
+    required this.warning,
+  });
+
+  final String assetId;
+  final int durationMs;
+  final bool metadataIncomplete;
+  final String? warning;
 }

@@ -32,7 +32,9 @@ class PlaybackService extends ChangeNotifier {
         _mediaRepository = mediaRepository ?? MediaRepositoryImpl(),
         _vlcService = vlcService ?? VlcService(),
         _playbackState = PlaybackState.initial(projectId: projectId),
-        _queueState = QueueState.initial(projectId: projectId);
+        _queueState = QueueState.initial(projectId: projectId) {
+    unawaited(_warmMediaDurationCache());
+  }
 
   final String _projectId;
   final Cue _fallbackCue;
@@ -47,6 +49,7 @@ class PlaybackService extends ChangeNotifier {
   final List<LiveEventLog> _logs = [];
 
   Timer? _ticker;
+  final Map<String, int> _resolvedDurationsByMediaAssetId = {};
 
   PlaybackState get playbackState => _playbackState;
 
@@ -338,7 +341,30 @@ class PlaybackService extends ChangeNotifier {
   }
 
   int _durationFor(Cue cue) {
-    return _cueDurationsMs[cue.title] ?? 7000;
+    final fromOverrides = _cueDurationsMs[cue.id] ?? _cueDurationsMs[cue.mediaAssetId] ?? _cueDurationsMs[cue.title];
+    if (fromOverrides != null && fromOverrides > 0) {
+      return fromOverrides;
+    }
+
+    final mediaDuration = _resolvedDurationsByMediaAssetId[cue.mediaAssetId];
+    if (mediaDuration != null && mediaDuration > 0) {
+      return mediaDuration;
+    }
+
+    return 7000;
+  }
+
+  Future<void> _warmMediaDurationCache() async {
+    try {
+      final assets = await _mediaRepository.getAllMediaAssets();
+      for (final asset in assets) {
+        if (asset.durationMs > 0) {
+          _resolvedDurationsByMediaAssetId[asset.id] = asset.durationMs;
+        }
+      }
+    } catch (_) {
+      // Cache warmup is best-effort; playback fallback stays active.
+    }
   }
 
   void _appendLog({

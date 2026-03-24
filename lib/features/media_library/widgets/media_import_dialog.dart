@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:led_management_software/core/theme/app_colors.dart';
+import 'package:led_management_software/data/services/video_metadata_service.dart';
 import 'package:led_management_software/domain/enums/cue_type.dart';
 import 'package:led_management_software/domain/enums/media_category.dart';
+import 'package:led_management_software/shared/utils/media_formatters.dart';
 
 class MediaImportDialogResult {
   const MediaImportDialogResult({
@@ -13,6 +15,9 @@ class MediaImportDialogResult {
     required this.cueType,
     required this.isSponsorLocked,
     required this.isFavorite,
+    required this.detectedDurationMs,
+    required this.detectedFileExtension,
+    required this.analysisWarning,
   });
 
   final String title;
@@ -23,9 +28,11 @@ class MediaImportDialogResult {
   final CueType cueType;
   final bool isSponsorLocked;
   final bool isFavorite;
+  final int? detectedDurationMs;
+  final String? detectedFileExtension;
+  final String? analysisWarning;
 }
 
-/// Derives a category suggestion from a filename heuristic.
 MediaCategory _suggestCategory(String fileName) {
   final lower = fileName.toLowerCase();
   if (lower.contains('sponsor') || lower.contains('logo') || lower.contains('brand')) {
@@ -80,12 +87,15 @@ class _MediaImportDialogState extends State<MediaImportDialog> {
   final TextEditingController _sponsorController = TextEditingController();
   final TextEditingController _playerController = TextEditingController();
   final TextEditingController _tagsController = TextEditingController();
+  final VideoMetadataService _metadataService = VideoMetadataService();
 
   late MediaCategory _category;
   CueType _cueType = CueType.oneShot;
   bool _isSponsorLocked = false;
   bool _isFavorite = false;
   bool _categoryWasAutoSuggested = false;
+  bool _isAnalyzing = true;
+  VideoMetadata? _analysis;
 
   @override
   void initState() {
@@ -99,13 +109,14 @@ class _MediaImportDialogState extends State<MediaImportDialog> {
     _category = suggested;
     _categoryWasAutoSuggested = suggested != MediaCategory.general;
 
-    // Auto-set CueType for known categories
     if (suggested == MediaCategory.sponsor) {
       _cueType = CueType.lockedSponsor;
       _isSponsorLocked = true;
     } else if (suggested == MediaCategory.pregame || suggested == MediaCategory.halftime) {
       _cueType = CueType.loop;
     }
+
+    _analyzeFile();
   }
 
   String _humanizeFileName(String raw) {
@@ -133,41 +144,7 @@ class _MediaImportDialogState extends State<MediaImportDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // File info banner
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceStrong,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.video_file_rounded, size: 16, color: AppColors.secondary),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            widget.fileName,
-                            style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.textPrimary),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.filePath,
-                      style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
+              _buildFileInfo(theme),
               const SizedBox(height: 16),
               TextField(
                 controller: _titleController,
@@ -273,6 +250,87 @@ class _MediaImportDialogState extends State<MediaImportDialog> {
     );
   }
 
+  Widget _buildFileInfo(ThemeData theme) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceStrong,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.video_file_rounded, size: 16, color: AppColors.secondary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  widget.fileName,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.textPrimary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            widget.filePath,
+            style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 8),
+          if (_isAnalyzing)
+            Row(
+              children: [
+                const SizedBox(
+                  height: 14,
+                  width: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 8),
+                Text('Datei wird analysiert...', style: theme.textTheme.bodySmall),
+              ],
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Dauer: ${formatDurationMs(_analysis?.durationMs ?? 0)}', style: theme.textTheme.bodySmall),
+                Text('Dateityp: ${(_analysis?.fileExtension ?? 'unknown').toUpperCase()}', style: theme.textTheme.bodySmall),
+                if (_analysis?.warning != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      _analysis!.warning!,
+                      style: theme.textTheme.bodySmall?.copyWith(color: AppColors.warning),
+                    ),
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _analyzeFile() async {
+    setState(() {
+      _isAnalyzing = true;
+    });
+
+    final metadata = await _metadataService.analyzeFile(filePath: widget.filePath, fileName: widget.fileName);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _analysis = metadata;
+      _isAnalyzing = false;
+    });
+  }
+
   void _submit() {
     Navigator.of(context).pop(
       MediaImportDialogResult(
@@ -288,6 +346,9 @@ class _MediaImportDialogState extends State<MediaImportDialog> {
         cueType: _cueType,
         isSponsorLocked: _isSponsorLocked,
         isFavorite: _isFavorite,
+        detectedDurationMs: _analysis?.durationMs,
+        detectedFileExtension: _analysis?.fileExtension,
+        analysisWarning: _analysis?.warning,
       ),
     );
   }
@@ -337,4 +398,3 @@ class _MediaImportDialogState extends State<MediaImportDialog> {
     }
   }
 }
-
