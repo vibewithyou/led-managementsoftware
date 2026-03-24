@@ -67,7 +67,7 @@ class LiveControlController extends ChangeNotifier {
   List<LiveActionConfig> _actions = const [];
   PlaybackState _playbackState = PlaybackState.initial(projectId: 'live_project');
   List<LiveCueModel> _queue = const [];
-  String _fallbackCueLabel = 'Fallback Safe Loop';
+  String _fallbackCueLabel = 'Fallback';
   List<LiveEventLog> _logs = const [];
 
   PlaybackState get playbackState => _playbackState;

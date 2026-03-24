@@ -113,23 +113,30 @@ class _IntroPlayersScreenState extends State<IntroPlayersScreen> {
           Expanded(
             child: _controller.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : ReorderableListView.builder(
-                    itemCount: _controller.selectedItems.length,
-                    onReorder: _controller.reorderSelectedTeam,
-                    itemBuilder: (_, index) {
-                      final item = _controller.selectedItems[index];
-                      return Padding(
-                        key: ValueKey(item.entry.id),
-                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: PlayerIntroCard(
-                          item: item,
-                          orderIndex: index,
-                          onDelete: () => _controller.deletePlayer(item.entry.id),
-                          onToggleActive: (value) => _controller.togglePlayerActive(item.entry, value),
+                : _controller.selectedItems.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'Keine Spieler im aktuellen Team.\nFüge Spieler hinzu und weise Clips zu.',
+                          textAlign: TextAlign.center,
                         ),
-                      );
-                    },
-                  ),
+                      )
+                    : ReorderableListView.builder(
+                        itemCount: _controller.selectedItems.length,
+                        onReorder: _controller.reorderSelectedTeam,
+                        itemBuilder: (_, index) {
+                          final item = _controller.selectedItems[index];
+                          return Padding(
+                            key: ValueKey(item.entry.id),
+                            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                            child: PlayerIntroCard(
+                              item: item,
+                              orderIndex: index,
+                              onDelete: () => _controller.deletePlayer(item.entry.id),
+                              onToggleActive: (value) => _controller.togglePlayerActive(item.entry, value),
+                            ),
+                          );
+                        },
+                      ),
           ),
         ],
       ),

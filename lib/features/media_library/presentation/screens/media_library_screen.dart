@@ -121,7 +121,7 @@ class _MediaLibraryScreenState extends State<MediaLibraryScreen> {
                     flex: hasDetailPane ? 3 : 1,
                     child: AppPanel(
                       title: 'Clips',
-                      trailing: Text('${_controller.assets.length} Assets'),
+                      trailing: Text('${_controller.assets.length} Clips'),
                       child: _controller.isLoading
                           ? const Center(child: CircularProgressIndicator())
                           : AnimatedOpacity(
@@ -129,7 +129,7 @@ class _MediaLibraryScreenState extends State<MediaLibraryScreen> {
                               duration: AppDurations.slow,
                               child: _controller.assets.isEmpty
                                   ? const Center(
-                                      child: Text('Keine Clips vorhanden. Importiere deinen ersten Clip.'),
+                                      child: Text('Noch keine Clips vorhanden.\nImportiere den ersten Clip für den Livebetrieb.'),
                                     )
                                   : GridView.builder(
                                       itemCount: _controller.assets.length,
@@ -184,11 +184,11 @@ class _MediaLibraryScreenState extends State<MediaLibraryScreen> {
     return ListView(
       children: [
         _detailRow(context, 'Titel', selected.title),
-        _detailRow(context, 'Kategorie', selected.category.name),
-        _detailRow(context, 'CueType', selected.cueType.name),
+        _detailRow(context, 'Kategorie', _categoryLabel(selected.category)),
+        _detailRow(context, 'Cue-Typ', _cueTypeLabel(selected.cueType.name)),
         _detailRow(context, 'Dauer', formatDurationMs(selected.durationMs)),
         _detailRow(context, 'Datei', selected.fileName),
-        _detailRow(context, 'Typ', (selected.fileExtension ?? 'unknown').toUpperCase()),
+        _detailRow(context, 'Dateityp', (selected.fileExtension ?? 'unbekannt').toUpperCase()),
         _detailRow(context, 'Dateigröße', formatFileSize(selected.fileSizeBytes)),
         _detailRow(context, 'Pfad', selected.filePath),
         _detailRow(context, 'Sponsor', selected.sponsorName ?? '-'),
@@ -223,6 +223,28 @@ class _MediaLibraryScreenState extends State<MediaLibraryScreen> {
     if (width > 1450) return 3;
     if (width > 980) return 2;
     return 1;
+  }
+
+  String _categoryLabel(MediaCategory category) {
+    return switch (category) {
+      MediaCategory.game => 'Spiel',
+      MediaCategory.sponsor => 'Sponsor',
+      MediaCategory.intro => 'Intro',
+      MediaCategory.fallback => 'Fallback',
+      MediaCategory.player => 'Spieler',
+      MediaCategory.other => 'Sonstiges',
+    };
+  }
+
+  String _cueTypeLabel(String cueType) {
+    return switch (cueType) {
+      'event' => 'Event',
+      'oneShot' => 'One Shot',
+      'loop' => 'Loop',
+      'lockedSponsor' => 'Locked Sponsor',
+      'fallback' => 'Fallback',
+      _ => cueType,
+    };
   }
 
   Future<void> _pickAndImportClip() async {
