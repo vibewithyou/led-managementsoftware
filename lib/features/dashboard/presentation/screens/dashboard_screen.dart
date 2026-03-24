@@ -1,60 +1,80 @@
 import 'package:flutter/material.dart';
 import 'package:led_management_software/core/constants/app_spacing.dart';
+import 'package:led_management_software/core/theme/app_colors.dart';
 import 'package:led_management_software/features/dashboard/controller/dashboard_controller.dart';
 import 'package:led_management_software/features/dashboard/widgets/dashboard_kpi_card.dart';
-import 'package:led_management_software/shared/state/active_project_state.dart';
 import 'package:led_management_software/shared/widgets/layout/page_header.dart';
-import 'package:led_management_software/shared/widgets/surfaces/glass_panel.dart';
 import 'package:led_management_software/shared/widgets/surfaces/app_panel.dart';
+import 'package:led_management_software/shared/widgets/surfaces/glass_panel.dart';
 import 'package:led_management_software/shared/widgets/surfaces/status_badge.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final controller = DashboardController();
-    final activeProjectState = ActiveProjectState.instance;
-    final kpis = controller.kpis;
-    final alerts = controller.alerts;
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
 
+class _DashboardScreenState extends State<DashboardScreen> {
+  late final DashboardController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = DashboardController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: activeProjectState,
+      animation: _controller,
       builder: (context, _) {
+        final kpis = _controller.kpis;
+        final alerts = _controller.alerts;
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const PageHeader(
               title: 'Broadcast Dashboard',
-              description: 'Zentrale Übersicht zu Outputs, Cue-Status und Systemqualität für den Livebetrieb.',
+              description: 'Live-Zentrale mit echten Systemdaten aus Projekten, Playback, Queue und Logs.',
             ),
-            if (!activeProjectState.hasActiveProject) ...[
-              const SizedBox(height: AppSpacing.md),
-              const GlassPanel(
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.warning_amber_rounded, color: Colors.amberAccent),
-                  title: Text('Kein aktives Projekt gesetzt'),
-                  subtitle: Text('Bitte im Bereich „Projekte“ ein aktives Projekt auswählen.'),
-                ),
-              ),
-            ],
             const SizedBox(height: AppSpacing.md),
-            const GlassPanel(
+            GlassPanel(
               child: Row(
                 children: [
                   Expanded(
                     child: ListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: Text('Matchday Profile: HBL Heimspiel', style: TextStyle(fontWeight: FontWeight.w700)),
-                      subtitle: Text('Arena Süd • Ausspielung 1920x240 • Scene Set A aktiv'),
+                      title: Text(
+                        _controller.activeProjectLabel,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      subtitle: Text('Aktuelles Projekt • Letzte Aktion: ${_controller.lastActionLabel}'),
                     ),
                   ),
-                  StatusBadge(label: 'LIVE OK', type: StatusBadgeType.ready),
+                  StatusBadge(
+                    label: _controller.error == null ? 'LIVE MONITOR' : 'ERROR',
+                    type: _controller.error == null ? StatusBadgeType.ready : StatusBadgeType.error,
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
+            if (_controller.error != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: Text(
+                  _controller.error!,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.error),
+                ),
+              ),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -88,35 +108,54 @@ class DashboardScreen extends StatelessWidget {
                           children: [
                             Expanded(
                               child: AppPanel(
-                                title: 'Live-Warnungen',
-                                child: ListView.separated(
-                                  itemCount: alerts.length,
-                                  itemBuilder: (_, index) => ListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    leading: const Icon(Icons.warning_amber_rounded),
-                                    title: Text(alerts[index]),
-                                    subtitle: const Row(
-                                      children: [
-                                        Text('Priorität: Mittel'),
-                                        SizedBox(width: AppSpacing.xs),
-                                        StatusBadge(label: 'QUEUED', type: StatusBadgeType.queued, compact: true),
-                                      ],
-                                    ),
-                                  ),
-                                  separatorBuilder: (context, index) => const Divider(),
-                                ),
+                                title: 'Systemwarnungen',
+                                child: alerts.isEmpty
+                                    ? const Center(child: Text('Keine Warnungen. System bereit.'))
+                                    : ListView.separated(
+                                        itemCount: alerts.length,
+                                        itemBuilder: (_, index) => ListTile(
+                                          contentPadding: EdgeInsets.zero,
+                                          leading: const Icon(Icons.warning_amber_rounded, color: AppColors.warning),
+                                          title: Text(alerts[index]),
+                                          subtitle: const Row(
+                                            children: [
+                                              Text('Priorität: Hoch'),
+                                              SizedBox(width: AppSpacing.xs),
+                                              StatusBadge(label: 'CHECK', type: StatusBadgeType.queued, compact: true),
+                                            ],
+                                          ),
+                                        ),
+                                        separatorBuilder: (context, index) => const Divider(),
+                                      ),
                               ),
                             ),
                             const SizedBox(width: AppSpacing.md),
                             Expanded(
                               child: AppPanel(
-                                title: 'Nächste Live-Aktionen',
+                                title: 'Nächste Live-Relevanz',
                                 child: ListView(
-                                  children: const [
-                                    ListTile(title: Text('Einlauf Clip - Heimteam'), subtitle: Text('T-00:08')),
-                                    ListTile(title: Text('Sponsoren-Loop 16:9'), subtitle: Text('T-00:19')),
-                                    ListTile(title: Text('Toranimation Standard'), subtitle: Text('T-00:44')),
-                                    ListTile(title: Text('Halbzeit Teaser'), subtitle: Text('T-02:10')),
+                                  children: [
+                                    ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      title: const Text('Aktueller Cue'),
+                                      subtitle: Text(_controller.currentCueLabel),
+                                    ),
+                                    const Divider(),
+                                    ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      title: const Text('Queued Cues'),
+                                      subtitle: Text(
+                                        _controller.queuedCueLabels.isEmpty
+                                            ? 'Keine Queue-Einträge'
+                                            : _controller.queuedCueLabels.join(' • '),
+                                      ),
+                                    ),
+                                    const Divider(),
+                                    ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      title: const Text('Nächstes potenzielles Fallback'),
+                                      subtitle: Text(_controller.fallbackLabel),
+                                    ),
                                   ],
                                 ),
                               ),

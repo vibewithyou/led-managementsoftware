@@ -15,8 +15,11 @@ import 'package:led_management_software/features/live_control/model/live_action_
 import 'package:led_management_software/features/live_control/model/live_cue_model.dart';
 import 'package:led_management_software/features/live_control/service/live_control_service.dart';
 import 'package:led_management_software/features/settings/service/settings_service.dart';
+import 'package:led_management_software/shared/state/live_runtime_state.dart';
 
 class LiveControlController extends ChangeNotifier {
+  final LiveRuntimeState _liveRuntimeState = LiveRuntimeState.instance;
+
   LiveControlController({
     LiveControlService? service,
     SettingsService? settingsService,
@@ -160,6 +163,7 @@ class LiveControlController extends ChangeNotifier {
         )
         .toList(growable: false);
     _logs = _playbackService.logs;
+    _liveRuntimeState.update(playbackState: _playbackState, queue: _queue, vlcRunning: _playbackService.isVlcRunning);
   }
 
   String _categoryForCue(Cue cue) {
