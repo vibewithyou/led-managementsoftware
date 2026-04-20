@@ -1,0 +1,2904 @@
+Led managementsoftware
+
+modi
+tv off - anzeige vor spiel und in den pausen
+tv on - Werbeanzeigen während spiel
+einlauf heim
+einlauf gegener
+sonderaktionen - 2min, karten, timeout, wischer
+ende - Niederlage unendschieden sieg
+
+
+seiten
+Dashboard
+Projekte
+Mediathek
+live Steuerung
+einstellungen
+
+
+Dashboard
+Auswahl projekt (projekt was am nächsten am Datum dran ist als erstes anzeigen)
+anzeige aktives projekt
+Warnungen
+
+Projekte
+übersicht Projekte
+bearbeiten
+löschen
+neu anlegen (Name, Datum, standort)
+Mediathek bzw Clips dem projekt zuordnen in der richtigen Reihenfolge
+
+
+Mediathek
+importieren von Clips nach kategrorien etc
+beabreiten von Clips
+gespeicherte Clips sehen
+
+live Steuerung
+Name aktives projekt klein
+anzeige klein Warnungen oder fehler
+große Buttons für live Steuerung wann was kommt
+aktive ques bzw schleifen
+anezige aktiver Clip, nächster Clip
+
+einstellungen
+sponsorclips überspielen ja nein
+
+
+allgemeines
+ques müssen auch live bearbeitar sein
+spinsorenclips sollen durch laufen und nicht überspielt werden 
+man muss ques anhalten können
+offline fähig (offline Dump der db immer beim ersten start des Programms, aber auch online Modus falls Internet verfügbar)
+das wir später dann auch live von anderen geräten aus die Haupt app auf dem pc (der mit der led bandesteuerung verbunden ist) zu steuern sein, aber eben vom hauptgeräte aus immer zu übersteuern ist falls etwas nicht passt oder die Verbindung nicht passt
+man brauch Funktionen das z.b. bei 2min heim oder Gegner immer automatisch ein andere Clip gewählt wird (wir haben für jeden immer mehre Clips und wollen die immer einmal durch spielen bevor wir doppelte nehmen)
+große Buttons auch eben für die quick Actions (und eben auch eine Funktion das wir zum beipsiel unsere spieler als liste öffnen können für Torschützen oder so das wir die schnell anziegen können wenn eins gefallen ist)
+ebenso auch bei Verletzungen dann wollen wir die mit bildenr anzeigen unsere spieler dafür gibt's extra Clips
+VLC medipläner muss im Hintergrund gesteuert werden (weil darauf hört unsere bande als einziges der Laptop ist speziell konfiguriert und arbeitet eben nur damit das heißt wir müssen im Prinzip die Software soll das was wir bis jetzt händisch machen alles in den Player reinlegen anhalten oder bearbeiten eben übernehmen)
+zeitanzeige bei den ques wie lang die sind aber eben nur in der Zuordnung wenn man die zusammenstellt und dem projekt zuweist
+die Clips müssen sich irgendwie von der Datenbank oder einem Server ohne qualitäts oder Format verlust gezogen werden und auch offline gesichter werden das die Clips und ques immer gleich sind auf jedem gerät
+
+Was jetzt schon klar ist
+Ziel der Software
+
+Die Software soll LED-Banden, Szenen und Live-Abläufe einfach planen und während einer Show steuern.
+
+Grundprinzip
+
+Sie soll:
+
+für ein Team nutzbar sein
+offline-first funktionieren
+später Cloud/Synchronisation unterstützen
+auf allen Plattformen laufen
+zu Beginn besonders gut auf Windows und iOS funktionieren
+den Haupt-PC als führendes Steuergerät behandeln
+Live-Steuerung priorisieren
+das alte Projekt nicht übernehmen, sondern nur als Referenz nutzen
+Wichtige Bedienlogik
+Haupt-PC ist mit der LED-Bande verbunden
+andere Geräte dürfen später mitarbeiten oder fernsteuern
+Änderungen vom Haupt-PC haben immer Vorrang
+Szenen/Presets per Klick sind wichtiger als eine Timeline
+Queues müssen live bearbeitbar sein
+Sponsorclips dürfen nicht einfach überschrieben werden
+Queues müssen pausierbar sein
+Clips sollen lokal gesichert und synchron gehalten werden
+VLC läuft im Hintergrund und wird von der Software gesteuert
+Hauptbereiche
+Dashboard
+Projekte
+Mediathek
+Live-Steuerung
+Einstellungen
+Live-relevante Modi / Zustände
+TV off
+TV on
+Einlauf Heim
+Einlauf Gegner
+Sonderaktionen
+Ende
+dazu konkrete Quick Actions wie:
+2 Minuten
+Karten
+Timeout
+Wischer
+Torschütze
+Verletzung
+Pause / Stop / Start
+Mein erster Architekturvorschlag
+
+Ich würde die Software intern nicht nur nach Screens, sondern nach 6 Kernmodulen aufteilen:
+
+1. Projektmodul
+
+Verwaltet:
+
+Projekte
+Datum
+Standort
+Status
+Archiv
+Projektmedien-Zuordnung
+Szenen und Spielabläufe
+2. Medienmodul
+
+Verwaltet:
+
+MP4
+JPG
+Kategorien
+Metadaten
+Vorschau
+Bearbeitung
+lokale Speicherung
+Synchronstatus
+3. Szenen- und Queue-Modul
+
+Verwaltet:
+
+Szenen
+Reihenfolgen
+Schleifen
+Sponsorregeln
+Auto-Rotation
+Zufalls-/Reihenfolgelogik
+Live-Anpassung
+4. Live-Control-Modul
+
+Verwaltet:
+
+aktiven Clip
+nächsten Clip
+aktive Queue
+Schnellaktionen
+Fehler/Warnungen
+direkte Bedienung
+Eingriffe in laufende Abläufe
+5. Sync-/Offline-Modul
+
+Verwaltet:
+
+lokale Datenbank
+lokaler Mediencache
+Online-/Offline-Status
+Synchronisation
+Konfliktlösung
+Priorität des Haupt-PCs
+6. System-/VLC-Steuerungsmodul
+
+Verwaltet:
+
+VLC-Kommunikation
+Wiedergabe
+Start/Stop/Pause
+Übergaben an VLC
+Statusrückmeldung
+mögliche Fehlerzustände
+
+Das wirkt für mich sehr passend für dein Ziel.
+
+
+1. Produktziel
+Arbeitsname
+
+LED Management Software
+
+Hauptziel
+
+Die Software dient dazu, ein Spielprojekt vollständig vorzubereiten, Medien zuzuordnen, Szenen und Live-Abläufe zu planen und die LED-Bande während des Spiels sicher und schnell zu steuern.
+
+Kernprinzip
+offline-first
+live-tauglich
+große, schnelle Bedienflächen
+Haupt-PC hat immer Vorrang
+Szenen/Queues statt Timeline
+VLC läuft im Hintergrund und wird gesteuert
+Projekt = genau ein Spiel
+das alte System wird nicht übernommen, nur als Referenz betrachtet
+2. Grundlogik der Software
+Projektlogik
+
+Ein Projekt ist immer ein Spiel / ein Event.
+
+Ein Projekt enthält:
+
+Name
+Datum
+Standort
+Status
+zugeordnete Medien
+Teams
+Spielerlisten
+Szenen
+Queue-Logik
+Live-Protokoll
+Archivdaten
+Projektstatus
+
+Feste Status:
+
+Entwurf
+Bereit
+Live
+Beendet
+Archiviert
+3. Nutzer- und Gerätekonzept
+Rollen
+
+Es gibt keine klassischen Benutzerrollen wie Admin/Editor/Viewer.
+
+Stattdessen gibt es ein Geräteprioritätsmodell:
+
+1. Haupt-PC
+ist mit der LED-Bande verbunden
+steuert VLC
+hat immer Vorrang
+lokale Änderungen auf diesem Gerät überschreiben Konflikte
+kann alles
+2. Nebengeräte
+können Projekte vorbereiten
+Daten bearbeiten
+später evtl. fernsteuern
+dürfen mit dem Haupt-PC synchronisieren
+verlieren bei Konflikten gegen den Haupt-PC
+Konfliktregel
+
+Wenn zwei Geräte dieselben Daten ändern:
+
+Haupt-PC gewinnt
+Nebengerät wird beim nächsten Sync angepasst
+4. Kernmodule der Software
+
+Ich würde die Software in 7 Hauptmodule teilen.
+
+1. Dashboard-Modul
+
+Zeigt:
+
+nächstes Projekt
+aktives Projekt
+Warnungen
+Systemstatus
+Schnellzugriff auf Live-Steuerung
+2. Projekt-Modul
+
+Verwaltet:
+
+Projektübersicht
+Projekt erstellen
+Projekt bearbeiten
+Projekt löschen
+Projektstatus
+Medienzuordnung
+Szenenstruktur
+Teams und Spieler
+Archivierung
+3. Mediathek-Modul
+
+Verwaltet:
+
+MP4-Dateien
+JPG-Dateien
+Kategorien
+eigene Kategorien
+Metadaten
+Such- und Filterlogik
+Projektzuordnung
+lokale Dateiablage
+Sync-Status
+4. Szenen- und Queue-Modul
+
+Verwaltet:
+
+Szenen
+Clips in Szenen
+Reihenfolge
+Priorität
+Schutzstatus
+Schleifen
+Auto-Rotation
+Unterbrechungslogik
+Wiederaufnahme an exakter Stelle
+5. Live-Control-Modul
+
+Verwaltet:
+
+Live-Wiedergabe
+aktive Szene
+nächster Clip
+Quick Actions
+Heim/Gegner-Steuerung
+Unterbrechungen
+Rückkehr zur pausierten Szene
+manuelle Eingriffe
+Protokollierung
+6. Sync-/Offline-Modul
+
+Verwaltet:
+
+lokale Datenbank
+Medien-Cache
+Erststart-Dump
+Online-/Offline-Erkennung
+Synchronisation
+Konfliktlösung
+Gerätepriorität
+7. VLC-/Playback-Modul
+
+Verwaltet:
+
+Kommunikation mit VLC
+Start / Stop / Pause
+Clip-Wechsel
+Statusprüfung
+Fehlererkennung
+Verbindung zur LED-Bande über VLC-Setup
+5. Datenmodell auf hoher Ebene
+Zentrale Entitäten
+Projekt
+id
+name
+datum
+standort
+status
+heimteam
+gegnerteam
+aktivFlag
+erstelltAm
+geändertAm
+archiviertAm
+Team
+id
+name
+typ (heim / gegner)
+Spieler
+id
+projektId
+teamTyp
+name
+nummer
+aktiveQuickActionVerwendung
+zugehörigeClipIds
+Medium
+id
+name
+dateipfadLokal
+serverPfad
+dateityp (mp4/jpg)
+kategorie
+tags
+dauer
+aktiv
+syncStatus
+checksumme/hash
+erstelltAm
+geändertAm
+Kategorie
+id
+name
+systemKategorie oder benutzerdefiniert
+Szene
+id
+projektId
+name
+kategorie
+aktiv
+fallbackSzene
+schleifeAktiv
+erstelltAm
+geändertAm
+SzenenClip
+
+Ein Clip innerhalb einer Szene:
+
+id
+szeneId
+mediumId
+reihenfolge
+geschütztVorÜberspielen
+überspielbar
+nurEinmal
+priorität
+wiederholbar
+rotationsgruppe
+bereitsGespieltZähler
+QueueState
+
+Laufzeitstatus:
+
+id
+projektId
+aktiveSzeneId
+aktiverClipIndex
+nächsterClipIndex
+pausiert
+unterbrochenVonSzeneId
+rückkehrClipIndex
+rückkehrZeitpunkt
+QuickAction
+id
+name
+typ
+teamBezug
+verknüpfteSzeneId oder Logikregel
+aktiv
+bestätigungErforderlich
+LiveLog
+id
+projektId
+zeitpunkt
+gerät
+benutzerOderGerätename
+aktion
+details
+erfolgreichJaNein
+Geräteprofil
+id
+name
+typ (hauptpc / nebengerät)
+letzteSyncZeit
+onlineStatus
+6. Szenenmodell
+
+Das ist einer der wichtigsten Teile.
+
+Eine Szene kann enthalten
+einen einzelnen Clip
+mehrere Clips
+gemischte Clips mit unterschiedlicher Priorität
+geschützte und ungeschützte Clips
+Schleifenlogik
+Auto-Fortsetzung
+Szenenkategorien
+
+Feste Standardkategorien:
+
+Vor dem Spiel
+Während des Spiels
+Pause
+Sonderaktion
+Nach dem Spiel
+
+Zusätzlich:
+
+eigene benutzerdefinierte Kategorien möglich
+Wichtige Szeneneigenschaften
+
+Eine Szene kann:
+
+automatisch in Schleife laufen
+feste Clipreihenfolge haben
+Schutzregeln pro Clip enthalten
+bei Unterbrechung pausieren
+danach exakt an alter Stelle fortsetzen
+Clips rotierend abspielen
+erst alle Varianten einmal nutzen, bevor Wiederholungen kommen
+7. Clip-Regeln innerhalb einer Szene
+
+Das ist bei dir besonders wichtig.
+
+Clip-Eigenschaften pro Szeneneintrag
+
+Jeder Clip in einer Szene braucht eigene Regeln:
+
+überspielbar ja/nein
+geschützt ja/nein
+Priorität
+Reihenfolge
+einmalig oder wiederholbar
+Rotationsgruppe
+Pflichtclip oder optional
+Rückkehrpunkt merken
+Beispiel
+
+In einer Sponsor-/TV-on-Szene können enthalten sein:
+
+Sponsorclip A → geschützt
+Sponsorclip B → geschützt
+neutraler Füllclip → überspielbar
+weiterer Sponsorclip → geschützt
+
+Wenn nun eine Sonderaktion dazwischenläuft:
+
+aktuelle Szene wird pausiert
+Sonderaktion läuft
+danach Rückkehr genau an die richtige Stelle
+nicht zum Szenenanfang
+8. Queue-Logik
+Definition
+
+Eine Queue ist bei dir:
+eine automatische Abspielreihenfolge bzw. Schleife
+
+Queue-Verhalten
+Szene läuft automatisch
+Clips werden der Reihenfolge nach abgespielt
+geschützte Clips dürfen nicht ungeplant überspielt werden
+Sonderaktionen können je nach Regel:
+sofort unterbrechen
+nach aktuellem Clip starten
+danach Rückkehr zur vorherigen Szene an exakter Stelle
+Queue kann live bearbeitet werden
+Queue kann pausiert werden
+Queue kann gestoppt werden
+Queue kann fortgesetzt werden
+Unterbrechungstypen
+
+Jede Aktion/Szene sollte einen Startmodus haben:
+
+Typ A – sofortige Unterbrechung
+
+Beispiel:
+
+rote Karte
+Timeout
+2 Minuten
+Verletzung
+Tor
+Typ B – nach aktuellem Clip
+
+Beispiel:
+
+Wechsel in TV off
+Wechsel in Pausemodus
+Wechsel nach Spielende
+9. Automatische Cliprotation
+
+Auch das ist zentral.
+
+Ziel
+
+Wenn mehrere Varianten für dieselbe Aktion existieren, sollen sie:
+
+möglichst nicht doppelt hintereinander kommen
+erst einmal alle durchlaufen
+danach wieder von vorn beginnen
+Beispiel
+
+Für „2 Minuten Heim“ gibt es 4 Clips:
+
+Clip 1
+Clip 2
+Clip 3
+Clip 4
+
+Logik:
+
+erst 1, 2, 3, 4
+danach wieder 1, 2, 3, 4
+optional später Zufallsmodus ohne direkte Wiederholung
+
+Diese Logik sollte gelten für:
+
+2 Minuten Heim
+2 Minuten Gegner
+Timeout Heim/Gegner
+Karten
+Verletzung
+evtl. weitere Sonderclips
+10. Teams und Spieler
+Pro Projekt
+
+Es sollen hinterlegt werden:
+
+Heimteam
+Gegnerteam
+Spielerlisten
+
+Pro Team:
+
+Spielername
+Nummer
+verknüpfte Clips
+nutzbar für Quick Actions
+Anwendungsfälle
+Einlauf einzelner Spieler
+Torschützenanzeige
+Verletzungsanzeige
+weitere spielerbezogene Aktionen
+Wichtiger Punkt
+
+Du willst erstmal keine Spielerbilder als eigenes Medienobjekt, sondern primär zugehörige Clips. Das ist sinnvoll.
+
+11. Hauptscreens der Software
+1. Dashboard
+2. Projekte
+3. Mediathek
+4. Live-Steuerung
+5. Einstellungen
+
+Das sind die festen Hauptbereiche.
+
+Navigation:
+
+links
+einklappbar
+eingeklappt nur Icons
+Kategorien / Untergruppen / Tabs möglich
+12. Screen-Plan im Detail
+A. Dashboard
+Zweck
+
+Schneller Überblick nach App-Start.
+
+Inhalte
+nächstes Projekt ganz oben
+aktives Projekt
+Projektstatus
+Warnungen
+letzter Sync
+Online/Offline-Status
+VLC-Status
+Medienstatus
+Schnellbuttons:
+Projekt öffnen
+Live-Steuerung starten
+Mediathek öffnen
+neues Projekt
+Wichtig
+
+Das Projekt mit dem nächsten Datum wird automatisch hervorgehoben.
+
+B. Projekte
+
+Ich würde den Bereich intern in Unterseiten aufteilen, damit es nicht überladen wird.
+
+B1. Projektübersicht
+
+Liste aller Projekte:
+
+Name
+Datum
+Standort
+Status
+Sync-Status
+Bearbeiten
+Löschen
+Archivieren
+Duplizieren
+B2. Projekt erstellen/bearbeiten
+
+Felder:
+
+Name
+Datum
+Standort
+Heimteam
+Gegnerteam
+Status
+Notizen
+B3. Projektmedien-Zuordnung
+
+Hier werden Medien dem Projekt zugeordnet.
+
+Funktionen:
+
+Medien aus Mediathek hinzufügen
+filtern nach Kategorie
+Reihenfolgen festlegen
+projektbezogen aktiv/inaktiv setzen
+B4. Szenenplaner
+
+Hier wird das Herzstück vorbereitet.
+
+Funktionen:
+
+Szene anlegen
+Szene benennen
+Kategorie wählen
+Clips hinzufügen
+Reihenfolge setzen
+Schutz pro Clip definieren
+Unterbrechbarkeit definieren
+Rückkehrverhalten definieren
+Schleifen aktivieren
+Rotationsgruppen definieren
+B5. Teams & Spieler
+Heimteam
+Gegnerteam
+Spielerlisten
+Clips zu Spielern zuweisen
+B6. Live-Vorbereitung / Projekt-Check
+
+Vor Live-Betrieb:
+
+alle benötigten Medien vorhanden?
+VLC erreichbar?
+Offline-Daten vollständig?
+Warnungen?
+Projektstatus auf „Bereit“?
+C. Mediathek
+Zweck
+
+Zentrale Medienverwaltung.
+
+Inhalte
+Liste aller Medien
+Kategoriefilter
+Suche
+Tags
+Vorschau
+Dateiinformationen
+Bearbeitung von Metadaten
+Sync-Status
+lokal vorhanden ja/nein
+Aktionen
+importieren
+umbenennen
+Kategorie ändern
+Tags setzen
+aktiv/inaktiv
+Vorschau starten
+zu Projekten zuordnen
+löschen / archivieren
+Kategorien
+
+Standardmäßig:
+
+Sponsoren
+Einlauf
+TV off
+TV on
+Timeout
+Karten
+2 Minuten
+Spieler
+Verletzung
+Wischer
+Spielende
+
+plus:
+
+eigene Kategorien
+D. Live-Steuerung
+
+Das ist der wichtigste Screen.
+
+Grundprinzip
+sehr große Kacheln
+schnell
+wenig Textballast
+klare Zustände
+3-Spalten-Layout
+Empfohlenes 3-Spalten-Layout
+Linke Spalte – Quick Actions Heim
+2 Minuten Heim
+Timeout Heim
+Einlauf Heim
+Spielerliste Heim
+Tor/Scorer Heim
+Verletzung Heim
+weitere Heim-Aktionen
+Mittlere Spalte – zentrale Live-Steuerung
+aktives Projekt
+Warnungen
+aktueller Clip groß
+nächster Clip
+aktuelle Szene
+Statusanzeige
+Start
+Stop
+Pause
+Weiter
+manuelle Szenenwahl
+Rückkehr/Fortsetzen
+Rechte Spalte – Quick Actions Gegner + Queue
+
+oben:
+
+2 Minuten Gegner
+Timeout Gegner
+Einlauf Gegner
+Spielerliste Gegner
+Gegnerbezogene Aktionen
+
+unten:
+
+aktive Queue
+aktiver Clipindex
+nächster Clip
+pausierte Szene
+Rückkehrstatus
+Live-Bearbeitung
+Feste große Buttons
+
+Mindestens:
+
+Vor dem Spiel
+Spielbeginn
+Pause
+Nach dem Spiel
+2 Minuten Heim
+2 Minuten Gegner
+Timeout Heim
+Timeout Gegner
+rote Karte
+Wischer
+Stop
+Pause
+Weiter
+Zusätzliche Live-Elemente
+Warnbanner
+VLC verbunden ja/nein
+LED-Verbindung ok ja/nein
+Online/Offline
+Schutzclip aktiv
+Übersteuerung aktiv
+Zeitinfo des aktuellen Clips
+E. Einstellungen
+Inhalte
+Haupt-PC-Modus ja/nein
+Sponsorclips überspielen erlaubt ja/nein
+Bestätigungsdialoge aktiv ja/nein
+VLC-Konfiguration
+Medienpfade
+Server-/Sync-Einstellungen
+Offline-Dump-Einstellungen
+Gerätename
+Log-Einstellungen
+13. Live-Verhalten im Detail
+Beispielablauf
+Projekt wird auf Bereit gesetzt
+Live-Steuerung wird geöffnet
+Standard-Szene läuft, z. B. TV off oder TV on
+währenddessen klickt der Operator eine Quick Action
+laufende Szene wird je nach Regel:
+sofort unterbrochen oder
+nach aktuellem Clip pausiert
+Sonderaktion läuft
+danach Rückkehr zur alten Szene an exaktem Punkt
+alles wird geloggt
+14. Sicherheitslogik
+Bestätigungsdialoge für kritische Aktionen
+
+Ja, für:
+
+Projekt beenden
+Queue komplett stoppen
+Sponsor-/Schutzlogik deaktivieren
+aktives Projekt wechseln
+Live-Steuerung hart zurücksetzen
+Keine Bestätigung für ultraschnelle Aktionen
+
+Nicht bei:
+
+2 Minuten Heim/Gegner
+Timeout
+Wischer
+Einlaufaktionen
+Tor-/Spieleraktionen
+
+sonst wird die Bedienung zu langsam.
+
+15. Logging
+Es soll geloggt werden:
+welche Aktion
+wann
+auf welchem Gerät
+von wem bzw. welchem Geräteprofil
+erfolgreich oder fehlgeschlagen
+welcher Clip / welche Szene betroffen war
+Log-Arten
+Live-Aktionen
+Fehler
+Sync-Konflikte
+Medienfehler
+VLC-Fehler
+16. Offline- und Sync-Konzept
+Grundprinzip
+
+Die App ist komplett offline nutzbar.
+
+Beim ersten Start
+lokaler Datenbank-Dump
+lokale Medienstruktur
+Grundsync, wenn online
+Wenn Internet verfügbar
+Projekte synchronisieren
+Metadaten synchronisieren
+Medien synchronisieren
+Konflikte prüfen
+Konfliktregel
+Haupt-PC gewinnt
+Nebengeräte werden angepasst
+Medienverfügbarkeit
+
+Mindestens der Haupt-PC muss alle Dateien lokal besitzen.
+
+Später sinnvoll:
+
+optionaler Vollsync auf Nebengeräten
+„Projekt offline verfügbar machen“-Funktion
+17. VLC-Integration
+VLC-Aufgabe
+
+VLC ist die eigentliche Wiedergabeinstanz.
+
+Die App soll:
+
+Clips an VLC übergeben
+Wiedergabe starten
+pausieren
+stoppen
+Status prüfen
+Fehler erkennen
+Startprüfung
+
+Beim Projektstart / Live-Start sollte automatisch geprüft werden:
+
+VLC läuft?
+VLC erreichbar?
+Medienpfade stimmen?
+aktive Projektdateien vorhanden?
+notwendige Szenen vorhanden?
+LED-relevante Wiedergabe möglich?
+18. Designkonzept
+Stilrichtung
+modern
+minimalistisch
+professionell
+wie ein Medien-/Licht-/Control-Tool
+große Touch-/Klickflächen
+wenig visuelle Unruhe
+Grundlayout
+dunkles Interface
+klare Akzentfarben
+starke Zustandsfarben
+große Karten
+große Buttons
+klare Hierarchie
+Zustandsfarben
+Rot = kritisch / Stop / Fehler
+Gelb = Warnung / Prüfung
+Grün = aktiv / läuft / verbunden
+Blau = Standardaktionen / Auswahl
+Grau = inaktiv / neutral
+Navigation
+linke Sidebar
+einklappbar
+nur Icons im kompakten Zustand
+Hauptpunkte + Unterpunkte/Tabs
+19. Empfohlene Navigationsstruktur
+Sidebar
+Dashboard
+Projekte
+Mediathek
+Live-Steuerung
+Einstellungen
+Projekte-Unterstruktur
+Übersicht
+Stammdaten
+Medien
+Szenen
+Teams & Spieler
+Live-Check
+20. Was unbedingt in Version 1 drin sein sollte
+
+Du hast gesagt: eigentlich alles. Für den Produktplan ist das okay, aber technisch würde ich intern trotzdem zwischen Kern-V1 und V1.1 innerhalb desselben Projekts unterscheiden, damit der Aufbau stabil wird.
+
+V1-Kern
+Dashboard
+Projektverwaltung
+Mediathek
+Szenenplaner
+Queue-Logik
+Live-Steuerung
+VLC-Steuerung
+Logging
+Offlinebetrieb
+Grundsync
+Teams & Spieler
+Quick Actions Heim/Gegner
+Schutzclip-/Prioritätslogik
+Direkt danach
+Fernsteuerung durch Nebengeräte
+erweiterte Konfliktansicht
+tiefere Sync-Verwaltung
+komplexere Automatikregeln
+erweiterte Statistik / Reports
+21. Empfohlene Flutter-Struktur für den Neustart
+
+Für das neue Projekt würde ich feature-first arbeiten, nicht wieder alles quer durcheinander.
+
+Oberstruktur
+core
+features
+shared
+core
+
+Enthält:
+
+theme
+routing
+config
+constants
+services
+error handling
+app shell
+shared
+
+Enthält:
+
+gemeinsame Widgets
+Buttons
+Panels
+Statuskarten
+Dialoge
+Tabellen
+Form-Komponenten
+features
+
+Unterteilt in:
+
+dashboard
+projects
+media_library
+scenes
+live_control
+settings
+sync
+playback
+logging
+
+Jedes Feature mit:
+
+data
+domain
+presentation
+controller/state
+
+Das ist für einen kompletten Neuaufbau viel sauberer.
+
+22. Mein konkreter Vorschlag für die nächsten Planungsschritte
+
+Als Nächstes sollten wir nicht direkt coden, sondern diese 4 Punkte sauber festzurren:
+
+Schritt 1
+
+Exakte Screen-Struktur
+also wirklich pro Seite:
+
+welche Bereiche
+welche Buttons
+welche Karten
+welche Listen
+welche Dialoge
+Schritt 2
+
+Szenen- und Queue-Regelwerk
+damit die Live-Logik später nicht wieder chaotisch wird
+
+Schritt 3
+
+Datenmodell final
+mit allen Feldern und Beziehungen
+
+Schritt 4
+
+neue Flutter-Projektstruktur
+mit Ordnern, State-Management, Routing, Themes, Models
+Perfekt. Damit sind die letzten offenen Produktentscheidungen jetzt auch weitgehend geklärt.
+
+Ich ziehe das Ganze jetzt in eine saubere Zielstruktur zusammen und lege den Fokus auf den nächsten sinnvollen Planungsschritt: **den exakten Aufbau der Screens und der Bedienlogik**. Das ist der richtige Punkt vor dem neuen Flutter-Projekt.
+
+# Finales Produktbild
+
+Die neue Software wird ein **offline-first Live-Control-Tool für LED-Banden** mit Projektplanung, Mediathek, Szenenlogik, Queue-Steuerung, Team-/Spielerbezug, Logging und späterer Synchronisation zwischen Geräten.
+
+Wichtigste Leitlinien:
+
+* Projekt = genau ein Spiel
+* Haupt-PC steuert die reale Ausgabe
+* Nebengeräte dürfen vorbereiten und später mitwirken
+* Haupt-PC gewinnt bei Konflikten
+* Szenen bestehen aus einem oder mehreren Clips
+* Clips in einer Szene können unterschiedliche Schutz- und Prioritätsregeln haben
+* Wiedergabe läuft über VLC im Hintergrund
+* Live-Steuerung muss groß, schnell und übersichtlich sein
+* Schutzclips dürfen nur von bestimmten Aktionen unterbrochen werden
+* nach Unterbrechung wird exakt an die vorherige Stelle zurückgekehrt
+
+# Letzte offene Entscheidung, jetzt festgezogen
+
+## Spieler-Auswahl
+
+Die Auswahl für Spieleraktionen wird als **Seitenansicht** aufgebaut, also ein aufklappbarer Bereich oder Side-Panel mit:
+
+* Suchfeld
+* scrollbarer Liste
+* Teambezug Heim/Gegner
+* schneller Auswahl per Klick
+
+Das passt deutlich besser zum Live-Betrieb als kleine überladene Popups.
+
+## Schutzlogik
+
+Geschützte Clips sind **nicht absolut unantastbar**, sondern nur gegen bestimmte Aktionen geschützt.
+Das heißt: jede Aktion bekommt später eine definierte Eingriffsregel.
+
+Beispiel:
+
+* Tor / 2 Minuten / Timeout darf unterbrechen
+* normaler Szenenwechsel vielleicht nicht
+* manche Aktionen erst nach aktuellem Clip
+
+Das ist genau die richtige Lösung.
+
+## VLC
+
+Für die Produktplanung reicht aktuell:
+
+* die Software ist die Steueroberfläche
+* VLC ist die Wiedergabeinstanz
+* die Bande übernimmt das, was VLC gerade abspielt
+* die App muss also Clips, Szenen und Wechsel so an VLC übergeben, dass dessen aktueller Wiedergabestatus die Bande steuert
+
+Die technische Anbindung definieren wir später separat.
+
+# Jetzt der saubere Screen-Plan
+
+## 1. Dashboard
+
+Ziel: Nach App-Start sofort Überblick und Schnellzugriff.
+
+### Bereiche
+
+Oben:
+
+* nächstes Projekt
+* aktives Projekt
+* Projektstatus
+
+Mitte:
+
+* Warnungen
+* VLC-Status
+* Offline/Online
+* letzter Sync
+* Medienverfügbarkeit
+
+Unten:
+
+* Schnellaktionen:
+
+  * Projekt öffnen
+  * Live-Steuerung starten
+  * Mediathek öffnen
+  * neues Projekt
+
+### Wichtig
+
+Das nächste Projekt nach Datum wird automatisch hervorgehoben.
+Wenn ein Projekt auf „Live“ steht, wird es stattdessen priorisiert angezeigt.
+
+---
+
+## 2. Projekte
+
+Der Bereich „Projekte“ bleibt Hauptmenüpunkt, wird intern aber in Tabs oder Unterseiten gegliedert.
+
+### 2.1 Projektübersicht
+
+Liste oder Kartenansicht mit:
+
+* Name
+* Datum
+* Standort
+* Status
+* Heim/Gegner
+* Sync-Status
+* Bearbeiten
+* Löschen
+* Archivieren
+* Duplizieren
+
+Oben:
+
+* Suchfeld
+* Filter nach Status
+* Filter nach Datum
+* Button „Neues Projekt“
+
+### 2.2 Projekt-Stammdaten
+
+Felder:
+
+* Projektname
+* Datum
+* Standort
+* Heimteam
+* Gegnerteam
+* Status
+* interne Notiz
+
+### 2.3 Projekt-Medien
+
+Hier werden Medien aus der globalen Mediathek dem Projekt zugeordnet.
+
+Elemente:
+
+* Medienliste links
+* Projektzuordnung rechts
+* Filter nach Kategorie
+* Suche
+* Reihenfolge
+* Aktiv/Inaktiv pro Projekt
+* Vorschau
+* Entfernen aus Projekt
+
+### 2.4 Projekt-Szenen
+
+Das ist einer der wichtigsten Bereiche.
+
+Hier sieht man:
+
+* Liste aller Szenen des Projekts
+* Kategorie
+* Clipanzahl
+* Schleife aktiv ja/nein
+* aktiv/inaktiv
+* Standard-/Fallback-Szene
+
+Aktionen:
+
+* Szene anlegen
+* Szene duplizieren
+* Szene löschen
+* Szene bearbeiten
+* Reihenfolge ändern
+
+### 2.5 Szenen-Editor
+
+Beim Öffnen einer Szene:
+
+Oben:
+
+* Szenenname
+* Kategorie
+* Schleife aktiv
+* Standardszene ja/nein
+
+Mitte:
+
+* Liste der Clips in der Szene
+
+Pro Clip:
+
+* Medium
+* Dauer
+* Reihenfolge
+* geschützt ja/nein
+* überspielbar ja/nein
+* Priorität
+* Startregel
+* Rückkehrverhalten
+* Rotationsgruppe
+* nur einmal ja/nein
+
+Unten:
+
+* Clip hinzufügen
+* Sortierung ändern
+* speichern
+
+### 2.6 Teams & Spieler
+
+Zwei Bereiche:
+
+* Heim
+* Gegner
+
+Jeder Bereich:
+
+* Teamname
+* Spielerliste
+* Suche
+* Spieler hinzufügen
+* Spieler bearbeiten
+* Clips zuweisen
+
+Pro Spieler:
+
+* Name
+* Nummer
+* verknüpfte Clips
+* nutzbar für Einlauf
+* nutzbar für Tor
+* nutzbar für Verletzung
+
+### 2.7 Projekt-Check
+
+Vor Live-Betrieb:
+
+Prüfliste:
+
+* VLC erreichbar
+* alle Medien lokal vorhanden
+* Szenen vollständig
+* Quick Actions zugewiesen
+* Haupt-PC aktiv
+* Projektstatus korrekt
+* Offline-Daten vorhanden
+
+Mit Status:
+
+* ok
+* Warnung
+* Fehler
+
+---
+
+## 3. Mediathek
+
+Ziel: zentrale Medienverwaltung.
+
+### Bereiche
+
+Links:
+
+* Kategorien
+* eigene Kategorien
+* Filter
+
+Mitte:
+
+* Medienliste
+* Vorschau
+* Dateityp
+* Dauer
+* Tags
+* Sync-Status
+
+Rechts:
+
+* Metadaten-Editor
+
+### Funktionen
+
+* importieren
+* Kategorie vergeben
+* Tags vergeben
+* umbenennen
+* aktiv/inaktiv
+* Vorschau
+* Projekte zuordnen
+* archivieren
+* löschen
+
+### Metadaten
+
+* Name
+* Kategorie
+* Tags
+* Teambezug optional
+* Spielertyp optional
+* Standardaktion optional
+* Dauer
+* lokale Datei vorhanden
+* Serverstatus
+* Änderungsdatum
+
+---
+
+## 4. Live-Steuerung
+
+Das ist der zentrale Arbeitsbereich während des Spiels.
+
+Ich würde ihn jetzt fest so planen:
+
+## 4.1 Grundlayout
+
+**3-Spalten-Layout mit großen Kacheln**
+
+### Linke Spalte
+
+Heim-Aktionen und Teamseiten
+
+### Mittlere Spalte
+
+Wiedergabe, Status, Hauptsteuerung
+
+### Rechte Spalte
+
+Gegner-Aktionen und Queue/Live-Zustand
+
+---
+
+## 4.2 Linke Spalte: Heim
+
+Große Buttons:
+
+* Vor dem Spiel
+* Spielbeginn
+* Einlauf Heim
+* 2 Minuten Heim
+* Timeout Heim
+* Tor Heim
+* Verletzung Heim
+* Wischer
+* Pause
+* Nach dem Spiel
+
+Darunter:
+
+* Button „Spieler Heim öffnen“
+
+Beim Öffnen:
+
+* seitliche Ansicht
+* Suchfeld
+* scrollbare Spielerliste
+* Klick auf Spieler löst passende Aktion aus oder öffnet eine kleine Auswahl der verfügbaren Clipaktionen
+
+---
+
+## 4.3 Mittlere Spalte: Hauptbereich
+
+Ganz oben:
+
+* aktives Projekt
+* Projektstatus
+* kleine Warnungen/Fehler
+* VLC-Status
+* Online/Offline
+* Haupt-PC-Modus aktiv
+
+Dann zentral groß:
+
+* aktueller Clip
+* aktueller Szenenname
+* aktueller Clipstatus
+* Schutzstatus des aktuellen Clips
+* verbleibende Zeit / Fortschritt
+
+Darunter:
+
+* nächster Clip
+* nächste Szene optional
+
+Steuerbuttons:
+
+* Start
+* Pause
+* Weiter
+* Stop
+* Szene fortsetzen
+* Rückkehr zur pausierten Szene
+* aktuelle Queue anhalten
+
+Zusätzlich:
+
+* manuelle Szenenauswahl
+* manuelle Clipauswahl
+* Notfall-Override
+
+---
+
+## 4.4 Rechte Spalte: Gegner + Queue
+
+Oben große Buttons:
+
+* Einlauf Gegner
+* 2 Minuten Gegner
+* Timeout Gegner
+* Tor Gegner
+* Verletzung Gegner
+* rote Karte
+* weitere Gegneraktionen
+
+Darunter:
+
+* Button „Spieler Gegner öffnen“
+* gleiche Seitenansicht wie links
+
+Unten:
+
+* aktive Szene
+* aktive Queue
+* aktueller Clipindex
+* nächster Clipindex
+* pausierte Szene
+* Rückkehrposition
+* Live-Bearbeiten der Queue
+
+---
+
+## 4.5 Live-Bearbeitung
+
+Direkt im Live-Screen soll möglich sein:
+
+* Queue pausieren
+* Queue fortsetzen
+* Clip überspringen
+* nächsten Clip austauschen
+* Szene wechseln
+* Rückkehrpunkt sehen
+* Sonderaktion priorisieren
+
+Das aber nur in einem separaten Bedienbereich, damit die Hauptbuttons nicht unübersichtlich werden.
+
+---
+
+## 4.6 Schutzlogik im Live-Betrieb
+
+Im Live-Screen soll immer sichtbar sein:
+
+* aktueller Clip ist geschützt oder nicht
+* welche Aktionen aktuell erlaubt sind
+* ob Unterbrechung sofort oder nach Clipende erfolgt
+
+Das kann über kleine Statusbadges gelöst werden.
+
+---
+
+## 5. Einstellungen
+
+### Bereiche
+
+Allgemein:
+
+* Gerätename
+* Haupt-PC-Modus
+* Bestätigungen aktiv
+
+Wiedergabe:
+
+* VLC-Pfad / Verbindung
+* Wiedergabeprüfung
+* automatischer Startcheck
+
+Live-Regeln:
+
+* Sponsorclips schützen
+* Unterbrechungsregeln
+* Rückkehrverhalten
+* Standard-Startszene
+
+Sync:
+
+* Serveradresse
+* letzter Sync
+* Automatik an/aus
+* Konfliktregelanzeige
+
+Speicher:
+
+* lokaler Medienpfad
+* Offline-Dump
+* Cache aktualisieren
+
+Logging:
+
+* Logging aktiv
+* Detailgrad
+* Exportmöglichkeit später
+
+# Bedienlogik für Spieleraktionen
+
+Die Spieleransicht sollte nicht nur eine reine Liste sein, sondern direkt live-tauglich.
+
+## Vorschlag
+
+Beim Klick auf „Spieler Heim öffnen“:
+
+* rechte oder linke Seitenansicht fährt auf
+* Suchfeld oben
+* darunter alphabetische oder nummerische Liste
+* pro Spieler Direktaktionen:
+
+  * Einlauf
+  * Tor
+  * Verletzung
+
+So spart ihr einen Zwischenschritt.
+
+# Regelwerk für Aktionen
+
+Jede Live-Aktion sollte später diese Eigenschaften haben:
+
+* Name
+* Teambezug
+* Zielszene oder Zielclipregel
+* Unterbrechungsart
+* darf geschützte Clips unterbrechen ja/nein
+* Start sofort oder nach aktuellem Clip
+* Rückkehr nach Ende ja/nein
+* Bestätigung nötig ja/nein
+* loggen ja/nein
+
+Das wird extrem wichtig für eine saubere Engine.
+
+# Was jetzt als nächstes dran ist
+
+Der nächste sinnvolle Planungsschritt ist jetzt nicht mehr allgemein, sondern konkret:
+
+## Schritt 1
+
+Ich erstelle dir als Nächstes das **komplette Regelwerk für Szenen, Clips, Queues und Quick Actions**.
+
+Also ganz genau:
+
+* wie Szenen intern funktionieren
+* wie Clip-Schutz funktioniert
+* wie Unterbrechungen behandelt werden
+* wie Rückkehrpunkte gespeichert werden
+* wie Rotationen laufen
+* wie Heim/Gegner-Aktionen zugeordnet werden
+
+## Schritt 2
+
+Danach machen wir das **Datenmodell final in Tabellen-/Klassenlogik**
+
+## Schritt 3
+
+Danach planen wir die **neue Flutter-Projektstruktur mit Ordnern, State-Management und Routing**
+
+Das ist jetzt die sinnvollste Reihenfolge.
+Erstelle ein komplett neues Flutter-Projekt für eine professionelle LED-Management-Software. Das alte Projekt soll nicht übernommen werden, sondern nur als inhaltliche Referenz dienen. Die neue App soll von Grund auf sauber, modular und produktionsnah aufgebaut werden.
+
+## Ziel der Software
+Die Software dient dazu, LED-Banden, Szenen und Live-Abläufe einfach zu planen und während eines Spiels sicher und schnell zu steuern. Ein Projekt entspricht immer genau einem Spiel/Event.
+
+## Plattformen
+Die App soll mit Flutter plattformübergreifend aufgebaut werden und auf Windows, iOS, Android, Web, macOS und Linux lauffähig sein. Priorität zum Start: Windows und iOS.
+
+## Grundprinzipien
+- offline-first
+- später Cloud-/Sync-Unterstützung
+- Haupt-PC hat Vorrang
+- große, schnelle Live-Bedienung
+- Fokus auf Szenen/Presets per Klick, nicht Timeline
+- VLC läuft im Hintergrund als Wiedergabeinstanz
+- moderne, minimalistische, professionelle UI
+- dunkles Control-Tool-Design mit klaren Statusfarben
+- einklappbare Sidebar mit Icons
+- Feature-First-Projektstruktur
+- wartbarer, sauberer, modularer Code
+
+## Geräte-/Prioritätsmodell
+Es gibt keine klassischen Benutzerrollen, sondern ein Geräteprioritätsmodell:
+- Haupt-PC: mit LED-Bande verbunden, steuert VLC, hat immer Vorrang
+- Nebengeräte: dürfen vorbereiten, bearbeiten, später fernsteuern
+- bei Konflikten gewinnt immer der Haupt-PC
+
+## Hauptmodule
+Erstelle die App mit klar getrennten Modulen:
+1. Dashboard
+2. Projekte
+3. Mediathek
+4. Szenen & Queue-Logik
+5. Live-Steuerung
+6. Einstellungen
+7. Offline/Sync
+8. Playback/VLC
+9. Logging
+
+## Hauptnavigation
+Linke Sidebar, einklappbar:
+- Dashboard
+- Projekte
+- Mediathek
+- Live-Steuerung
+- Einstellungen
+
+## Projektlogik
+Ein Projekt hat:
+- Name
+- Datum
+- Standort
+- Status: Entwurf, Bereit, Live, Beendet, Archiviert
+- Heimteam
+- Gegnerteam
+- Spielerlisten
+- zugeordnete Medien
+- Szenen
+- Queue-Logik
+- Logging
+
+## Medienlogik
+Unterstützte Medien:
+- MP4
+- JPG
+
+Mediathek-Funktionen:
+- Importieren
+- Kategorien
+- eigene Kategorien
+- Metadaten bearbeiten
+- Tags
+- Vorschau
+- projektbezogene Zuordnung
+- lokale Verfügbarkeit
+- Sync-Status
+
+## Standardkategorien
+- Sponsoren
+- Einlauf
+- TV off
+- TV on
+- Timeout
+- Karten
+- 2 Minuten
+- Spieler
+- Verletzung
+- Wischer
+- Spielende
+Zusätzlich müssen benutzerdefinierte Kategorien möglich sein.
+
+## Szenenlogik
+Eine Szene kann aus einem oder mehreren Clips bestehen.
+Jeder Clip innerhalb einer Szene braucht eigene Regeln:
+- Reihenfolge
+- geschützt vor bestimmten Aktionen
+- überspielbar ja/nein
+- Priorität
+- nur einmal ja/nein
+- wiederholbar ja/nein
+- Rotationsgruppe
+- Rückkehrverhalten
+
+Szenenkategorien:
+- Vor dem Spiel
+- Während des Spiels
+- Pause
+- Sonderaktion
+- Nach dem Spiel
+Zusätzlich benutzerdefinierte Kategorien.
+
+## Queue-Logik
+Eine Queue ist eine automatische Abspielreihenfolge/Schleife.
+Anforderungen:
+- live bearbeitbar
+- pausierbar
+- fortsetzbar
+- Clips können geschützt sein
+- bei Unterbrechung Rückkehr zur vorherigen Szene an exakter Stelle
+- manche Aktionen starten sofort
+- manche Aktionen starten erst nach aktuellem Clip
+- geschützte Clips dürfen nur von bestimmten Aktionen unterbrochen werden
+
+## Automatische Rotation
+Für Aktionen mit mehreren Varianten, z. B. „2 Minuten Heim“, müssen alle Clips erst einmal durchlaufen, bevor Wiederholungen kommen.
+
+## Teams & Spieler
+Pro Projekt:
+- Heimteam
+- Gegnerteam
+- Spielerlisten
+
+Spieler sollen für Quick Actions nutzbar sein:
+- Einlauf
+- Tor
+- Verletzung
+Spieler haben zugehörige Clips, aber keine zwingende eigene Bildverwaltung.
+
+## Dashboard
+Zeige:
+- nächstes Projekt
+- aktives Projekt
+- Warnungen
+- VLC-Status
+- Online/Offline
+- letzter Sync
+- Medienverfügbarkeit
+- Schnellaktionen
+
+## Projekte
+Unterteile Projekte intern in:
+- Übersicht
+- Stammdaten
+- Medien
+- Szenen
+- Teams & Spieler
+- Projekt-Check
+
+## Mediathek
+Zentrale Medienverwaltung mit Suche, Filtern, Kategorien, Vorschau und Metadaten.
+
+## Live-Steuerung
+Wichtigster Screen.
+Nutze ein 3-Spalten-Layout:
+- links: Heim-Aktionen
+- mitte: Hauptsteuerung, aktiver Clip, nächster Clip, Status
+- rechts: Gegner-Aktionen und Queue/Live-Zustand
+
+Große Buttons/Kacheln.
+
+Wichtige Live-Aktionen:
+- Vor dem Spiel
+- Spielbeginn
+- Pause
+- Nach dem Spiel
+- Einlauf Heim/Gegner
+- 2 Minuten Heim/Gegner
+- Timeout Heim/Gegner
+- rote Karte
+- Wischer
+- Tor
+- Verletzung
+- Pause
+- Stop
+- Weiter
+
+Spieleransicht:
+- als Seitenansicht/Side Panel
+- suchbar
+- scrollbar
+- Heim und Gegner getrennt
+
+## Einstellungen
+Bereiche:
+- Allgemein
+- Wiedergabe/VLC
+- Live-Regeln
+- Sync
+- Speicher
+- Logging
+
+## Logging
+Logge:
+- Aktion
+- Zeitpunkt
+- Gerät
+- Erfolg/Fehler
+- betroffene Szene/Clip
+- Sync-Konflikte
+- VLC-Fehler
+
+## Offline/Sync
+- App vollständig offline nutzbar
+- lokale Datenbank
+- lokaler Mediencache
+- Medien mindestens auf Haupt-PC vollständig lokal
+- Synchronisation bei Internetverbindung
+- Konfliktregel: Haupt-PC gewinnt
+
+## VLC
+VLC ist die Wiedergabeinstanz im Hintergrund.
+Die App soll darauf architektonisch vorbereitet werden:
+- Wiedergabe starten
+- pausieren
+- stoppen
+- Clipwechsel
+- Statusprüfung
+- Fehlererkennung
+
+## Design
+- dark UI
+- modern, minimalistisch, professionell
+- große Kacheln
+- klare visuelle Hierarchie
+- Farben:
+  - Rot = kritisch
+  - Gelb = Warnung
+  - Grün = aktiv
+  - Blau = Standard
+  - Grau = neutral
+
+## Technische Anforderungen
+- saubere Feature-First-Struktur
+- State-Management sauber und konsistent
+- Routing sauber
+- Models/Entities getrennt von UI
+- wiederverwendbare Widgets
+- keine chaotische, vermischte Architektur
+- möglichst production-ready Grundstruktur
+
+## Erwartetes Ergebnis
+Setze das Projekt nicht nur oberflächlich um, sondern strukturiere es so, dass daraus ein echtes neues Hauptprojekt entstehen kann.
+
+Liefere:
+1. komplette Projektstruktur
+2. alle Hauptscreens als saubere Flutter-Implementierung
+3. grundlegende Navigation
+4. Mock-/lokale Datenbasis zum Testen
+5. erste saubere Logik für Projekte, Medien, Szenen und Live Control
+6. gut lesbaren, modularen Code
+7. sinnvolle TODOs an den Stellen, an denen später VLC/Sync/Remote-Steuerung technisch ergänzt wird
+
+Arbeite sauber, modular und vollständig. Triff sinnvolle technische Entscheidungen, wenn nicht alles exakt vorgegeben ist, aber bleibe innerhalb dieser Produktvorgaben.
+Baue für dieses neue Flutter-Projekt eine saubere Feature-First-Architektur auf.
+
+## Anforderungen
+Erstelle folgende Hauptbereiche:
+- core
+- shared
+- features
+
+## core
+Enthält:
+- app
+- routing
+- theme
+- constants
+- config
+- error handling
+- shared services interfaces
+
+## shared
+Enthält:
+- wiederverwendbare Widgets
+- Buttons
+- Cards
+- Panels
+- Dialoge
+- Statusbadges
+- Tabellen
+- Form-Komponenten
+- Layout-Helfer
+
+## features
+Erstelle je ein Feature für:
+- dashboard
+- projects
+- media_library
+- scenes
+- live_control
+- settings
+- sync
+- playback
+- logging
+
+Jedes Feature möglichst in:
+- data
+- domain
+- presentation
+- application/controller
+
+## Zusätzlich
+- richte ein sauberes Routing ein
+- erstelle eine AppShell mit einklappbarer Sidebar
+- baue ein dunkles Theme
+- lege Demo-Daten an
+- bereite die App so vor, dass weitere Logik sauber ergänzt werden kann
+
+Gib mir nicht nur Theorie, sondern setze die Struktur direkt als Flutter-Code um.
+Erstelle für das neue Flutter-Projekt ein vollständiges, sauberes Datenmodell für die LED-Management-Software.
+
+## Benötigte Entitäten
+- Project
+- Team
+- Player
+- MediaItem
+- MediaCategory
+- Scene
+- SceneClip
+- QueueState
+- QuickAction
+- LiveLogEntry
+- DeviceProfile
+
+## Anforderungen an die Entitäten
+Project:
+- id
+- name
+- date
+- location
+- status
+- homeTeam
+- awayTeam
+- notes
+- createdAt
+- updatedAt
+- archivedAt
+
+Team:
+- id
+- name
+- side (home/away)
+
+Player:
+- id
+- projectId
+- teamSide
+- name
+- number
+- linkedClipIds
+- enabledForIntro
+- enabledForGoal
+- enabledForInjury
+
+MediaItem:
+- id
+- name
+- localPath
+- remotePath
+- type (mp4/jpg)
+- categoryId
+- tags
+- duration
+- isActive
+- syncStatus
+- checksum
+- createdAt
+- updatedAt
+
+MediaCategory:
+- id
+- name
+- isSystemCategory
+
+Scene:
+- id
+- projectId
+- name
+- category
+- isLooping
+- isActive
+- isDefault
+- fallbackSceneId
+- createdAt
+- updatedAt
+
+SceneClip:
+- id
+- sceneId
+- mediaItemId
+- orderIndex
+- isProtected
+- isOverridable
+- priority
+- playOnce
+- repeatable
+- rotationGroup
+- interruptionPolicy
+- returnBehavior
+
+QueueState:
+- id
+- projectId
+- activeSceneId
+- currentClipIndex
+- nextClipIndex
+- isPaused
+- interruptedBySceneId
+- returnClipIndex
+- returnTimestamp
+
+QuickAction:
+- id
+- name
+- type
+- targetSide
+- linkedSceneId
+- startsImmediately
+- canInterruptProtectedClip
+- requiresConfirmation
+- isEnabled
+
+LiveLogEntry:
+- id
+- projectId
+- timestamp
+- deviceId
+- actorName
+- action
+- details
+- success
+
+DeviceProfile:
+- id
+- name
+- type (main_pc/secondary_device)
+- isOnline
+- lastSyncAt
+
+## Anforderungen
+- verwende saubere Dart-Modelle
+- nutze Enums sinnvoll
+- trenne Domain und Data sauber
+- bereite die Modelle auf spätere lokale Speicherung und Sync vor
+- implementiere CopyWith, Equality, Serialisierung, sinnvolle Helpers
+
+Setze die Modelle direkt um und strukturiere sie produktionsnah.
+Setze die Hauptscreens der LED-Management-Software in Flutter vollständig als moderne, professionelle Desktop-/Tablet-UI um.
+
+## Designvorgaben
+- dark mode
+- modern
+- minimalistisch
+- große Kacheln und Buttons
+- klare visuelle Hierarchie
+- professionelle Control-Tool-Optik
+- Sidebar links, einklappbar
+- gute Nutzbarkeit auf Windows und iPad/iPhone
+
+## Hauptscreens
+1. Dashboard
+2. Projekte
+3. Mediathek
+4. Live-Steuerung
+5. Einstellungen
+
+## Dashboard
+Inhalte:
+- nächstes Projekt
+- aktives Projekt
+- Warnungen
+- VLC-Status
+- Online/Offline
+- letzter Sync
+- Medienstatus
+- Schnellaktionen
+
+## Projekte
+Intern als Unterseiten/Tabs:
+- Übersicht
+- Stammdaten
+- Medien
+- Szenen
+- Teams & Spieler
+- Projekt-Check
+
+## Mediathek
+- Kategorienleiste
+- Suche
+- Filter
+- Medienliste/Grid
+- Vorschau
+- Metadaten-Seite/-Panel
+
+## Live-Steuerung
+Wichtigster Screen.
+Baue ein 3-Spalten-Layout:
+- links: Heim-Aktionen als große Buttons
+- mitte: aktiver Clip, nächster Clip, Status, Hauptsteuerung
+- rechts: Gegner-Aktionen und Queue/Live-Zustand
+
+Zusätzlich:
+- Spieler-Auswahl als Seitenansicht/Side Panel mit Suchfeld und Scrollliste
+- Status-Badges für Schutzclip, Online/Offline, VLC, Warnungen
+- große Steuerbuttons für Start, Pause, Weiter, Stop, Rückkehr, Queue-Anhalten
+
+## Einstellungen
+Bereiche:
+- Allgemein
+- Wiedergabe
+- Live-Regeln
+- Sync
+- Speicher
+- Logging
+
+## Erwartung
+- keine halbfertigen Platzhalterlayouts
+- saubere Widgets
+- wiederverwendbare Komponenten
+- sinnvolle Aufteilung in Subwidgets
+- responsive Verhalten für Desktop und Tablet
+- Mockdaten integrieren, damit Screens direkt testbar sind
+
+Setze die Screens vollständig um.
+Implementiere die Kernlogik für Szenen, Queue-Steuerung und Quick Actions in der LED-Management-Software.
+
+## Ziel
+Die App arbeitet nicht timelinebasiert, sondern szenen- und presetbasiert. Eine Szene kann aus einem oder mehreren Clips bestehen. Clips innerhalb einer Szene können unterschiedliche Regeln haben.
+
+## Szenenregeln
+Jeder SceneClip braucht Logik für:
+- Reihenfolge
+- Schutzstatus
+- Überspielbarkeit
+- Priorität
+- playOnce
+- repeatable
+- Rotationsgruppe
+- Unterbrechungsregel
+- Rückkehrverhalten
+
+## Queue
+Eine Queue ist eine automatische Abspielreihenfolge/Schleife.
+Anforderungen:
+- Szene kann in Loop laufen
+- aktuelle Szene kann pausiert werden
+- Sonderaktion kann aktuelle Szene unterbrechen
+- danach Rückkehr zur alten Szene an exakter Stelle
+- Queue live bearbeitbar
+- nächster Clip sichtbar
+- Clip überspringen möglich
+- Szenewechsel möglich
+
+## Schutzlogik
+Geschützte Clips dürfen nicht von allen Aktionen unterbrochen werden. Nur bestimmte Quick Actions dürfen einen geschützten Clip unterbrechen.
+
+## Unterbrechungsarten
+Unterstütze mindestens:
+- sofort unterbrechen
+- nach aktuellem Clip unterbrechen
+- nicht erlaubt
+
+## Rückkehr
+Nach einer Sonderaktion soll die ursprüngliche Szene an der exakten Position fortgesetzt werden.
+
+## Automatische Rotation
+Für z. B. „2 Minuten Heim“ mit mehreren Varianten:
+- alle Varianten erst einmal vollständig durchspielen
+- erst danach Wiederholungen
+- keine direkte Doppelung, wenn möglich
+
+## Quick Actions
+Unterstütze diese Quick Actions:
+- Vor dem Spiel
+- Spielbeginn
+- Pause
+- Nach dem Spiel
+- Einlauf Heim
+- Einlauf Gegner
+- 2 Minuten Heim
+- 2 Minuten Gegner
+- Timeout Heim
+- Timeout Gegner
+- rote Karte
+- Wischer
+- Tor Heim
+- Tor Gegner
+- Verletzung Heim
+- Verletzung Gegner
+
+## Spielerlogik
+Spieler sollen für Quick Actions nutzbar sein:
+- Einlauf
+- Tor
+- Verletzung
+
+## Erwartetes Ergebnis
+- saubere Controller/State-Logik
+- gut testbare Architektur
+- Mock-Playback-State
+- keine echte VLC-Integration nötig, aber klare Schnittstellen
+- Code so schreiben, dass später VLC leicht angebunden werden kann
+
+Setze die Logik produktionsnah um.
+Implementiere für die neue LED-Management-Software ein solides Offline-, Sync- und Logging-Konzept.
+
+## Offline-First
+Die App muss vollständig offline nutzbar sein.
+Benötigt:
+- lokale Datenhaltung
+- lokaler Medienstatus
+- Kennzeichnung lokal verfügbarer Dateien
+- Projektdaten lokal verfügbar
+- mindestens Haupt-PC vollständig offline arbeitsfähig
+
+## Sync
+Spätere Online-Synchronisation vorbereiten.
+Benötigt:
+- Sync-Status je Projekt / Medium / Gerät
+- letzter Sync
+- Konflikterkennung
+- Haupt-PC gewinnt immer bei Konflikten
+- Nebengeräte werden angepasst
+- Architektur vorbereiten, auch wenn noch kein finaler Server existiert
+
+## Geräteprofil
+Unterstütze:
+- Haupt-PC
+- Nebengerät
+
+## Logging
+Erfasse:
+- Live-Aktionen
+- Fehler
+- Queue-Wechsel
+- Unterbrechungen
+- Rückkehr
+- Sync-Konflikte
+- Systemwarnungen
+
+## UI-Anbindung
+Zeige in der App:
+- Online/Offline
+- letzter Sync
+- aktives Gerät
+- Warnungen
+- Log-Liste oder Log-Panel
+
+## Erwartung
+- saubere Modelle
+- vorbereitete Repositories/Services
+- sinnvolle Mock-Implementierung
+- produktionsnahe Struktur
+Bereite im neuen Flutter-Projekt eine saubere Playback-Architektur für VLC vor.
+
+## Hintergrund
+Die LED-Bande übernimmt automatisch das, was VLC gerade abspielt. Die App ist also die Steueroberfläche und VLC die Wiedergabeinstanz im Hintergrund.
+
+## Anforderungen
+Baue eine saubere Abstraktion für Playback:
+- start clip
+- pause
+- resume
+- stop
+- next clip
+- load scene
+- status abfragen
+- fehlerstatus
+
+## Wichtig
+Es muss noch keine echte endgültige VLC-Anbindung implementiert werden, aber die Architektur soll so aufgebaut sein, dass man später VLC konkret anbinden kann.
+
+## Benötigt
+- PlaybackService Interface
+- MockPlaybackService
+- PlaybackState
+- Fehlerzustände
+- Statusmodell
+- Anbindung an Live-Control-Logik
+
+## UI
+Die Live-Steuerung soll mit diesem Playback-State arbeiten:
+- aktiver Clip
+- nächster Clip
+- läuft / pausiert / gestoppt
+- Warnung / Fehler
+- Schutzstatus
+
+Setze die Playback-Architektur sauber auf.
+als online backend kann er supabase via supabase cli nutzen und da das projekt led-managementsoftware, passwort ist led-managementsoftware123456# und url ist https://rtmynyvgnlgpxhimqlis.supabase.co publishabley key ist sb_publishable_CtcJfnR5thrB9OZesbCn-Q_792KyIWi und cli setup falls nicht vorhanden ist supabase login
+supabase init
+supabase link --project-ref rtmynyvgnlgpxhimqlis
+Erstelle ein komplett neues Flutter-Projekt für eine professionelle LED-Management-Software. Das alte Projekt soll nicht übernommen werden, sondern nur als inhaltliche Referenz dienen. Die neue App soll von Grund auf sauber, modular und produktionsnah aufgebaut werden.
+
+## Ziel der Software
+Die Software dient dazu, LED-Banden, Szenen und Live-Abläufe einfach zu planen und während eines Spiels sicher und schnell zu steuern. Ein Projekt entspricht immer genau einem Spiel/Event.
+
+## Plattformen
+Die App soll mit Flutter plattformübergreifend aufgebaut werden und auf Windows, iOS, Android, Web, macOS und Linux lauffähig sein. Priorität zum Start: Windows und iOS.
+
+## Grundprinzipien
+- offline-first
+- später Cloud-/Sync-Unterstützung
+- Haupt-PC hat Vorrang
+- große, schnelle Live-Bedienung
+- Fokus auf Szenen/Presets per Klick, nicht Timeline
+- VLC läuft im Hintergrund als Wiedergabeinstanz
+- moderne, minimalistische, professionelle UI
+- dunkles Control-Tool-Design mit klaren Statusfarben
+- einklappbare Sidebar mit Icons
+- Feature-First-Projektstruktur
+- wartbarer, sauberer, modularer Code
+
+## Online-Backend
+Nutze Supabase als Online-Backend für:
+- Projektsynchronisation
+- Geräteprofile
+- Logging
+- spätere Remote-Steuerung
+- Medien-Metadaten
+- spätere Benutzer-/Geräte-Synchronisation
+
+Die App muss trotzdem vollständig offline-first bleiben. Supabase ist eine Synchronisations- und Backend-Ebene, nicht die Voraussetzung für die Grundfunktion.
+
+## Supabase-Anforderungen
+- Supabase sauber per CLI integrieren
+- lokales Supabase-Konfigurationsverzeichnis anlegen
+- Migrationsstruktur vorbereiten
+- Tabellen, Policies und Basisstruktur produktionsnah anlegen
+- Flutter-App so aufbauen, dass Supabase sauber gekapselt ist
+- keine Supabase-Aufrufe direkt quer durch die UI verstreuen
+- Repositories und Services verwenden
+- sensible Konfigurationswerte aus `.env` oder sicherer Konfiguration laden
+- keine Secrets hart in Widgets oder Business-Logik schreiben
+
+## Geräte-/Prioritätsmodell
+Es gibt keine klassischen Benutzerrollen, sondern ein Geräteprioritätsmodell:
+- Haupt-PC: mit LED-Bande verbunden, steuert VLC, hat immer Vorrang
+- Nebengeräte: dürfen vorbereiten, bearbeiten, später fernsteuern
+- bei Konflikten gewinnt immer der Haupt-PC
+
+## Hauptmodule
+Erstelle die App mit klar getrennten Modulen:
+1. Dashboard
+2. Projekte
+3. Mediathek
+4. Szenen & Queue-Logik
+5. Live-Steuerung
+6. Einstellungen
+7. Offline/Sync
+8. Playback/VLC
+9. Logging
+10. Supabase-Backend-Anbindung
+
+## Hauptnavigation
+Linke Sidebar, einklappbar:
+- Dashboard
+- Projekte
+- Mediathek
+- Live-Steuerung
+- Einstellungen
+
+## Projektlogik
+Ein Projekt hat:
+- Name
+- Datum
+- Standort
+- Status: Entwurf, Bereit, Live, Beendet, Archiviert
+- Heimteam
+- Gegnerteam
+- Spielerlisten
+- zugeordnete Medien
+- Szenen
+- Queue-Logik
+- Logging
+
+## Medienlogik
+Unterstützte Medien:
+- MP4
+- JPG
+
+Mediathek-Funktionen:
+- Importieren
+- Kategorien
+- eigene Kategorien
+- Metadaten bearbeiten
+- Tags
+- Vorschau
+- projektbezogene Zuordnung
+- lokale Verfügbarkeit
+- Sync-Status
+
+## Standardkategorien
+- Sponsoren
+- Einlauf
+- TV off
+- TV on
+- Timeout
+- Karten
+- 2 Minuten
+- Spieler
+- Verletzung
+- Wischer
+- Spielende
+Zusätzlich müssen benutzerdefinierte Kategorien möglich sein.
+
+## Szenenlogik
+Eine Szene kann aus einem oder mehreren Clips bestehen.
+Jeder Clip innerhalb einer Szene braucht eigene Regeln:
+- Reihenfolge
+- geschützt vor bestimmten Aktionen
+- überspielbar ja/nein
+- Priorität
+- nur einmal ja/nein
+- wiederholbar ja/nein
+- Rotationsgruppe
+- Rückkehrverhalten
+
+Szenenkategorien:
+- Vor dem Spiel
+- Während des Spiels
+- Pause
+- Sonderaktion
+- Nach dem Spiel
+Zusätzlich benutzerdefinierte Kategorien.
+
+## Queue-Logik
+Eine Queue ist eine automatische Abspielreihenfolge/Schleife.
+Anforderungen:
+- live bearbeitbar
+- pausierbar
+- fortsetzbar
+- Clips können geschützt sein
+- bei Unterbrechung Rückkehr zur vorherigen Szene an exakter Stelle
+- manche Aktionen starten sofort
+- manche Aktionen starten erst nach aktuellem Clip
+- geschützte Clips dürfen nur von bestimmten Aktionen unterbrochen werden
+
+## Automatische Rotation
+Für Aktionen mit mehreren Varianten, z. B. „2 Minuten Heim“, müssen alle Clips erst einmal durchlaufen, bevor Wiederholungen kommen.
+
+## Teams & Spieler
+Pro Projekt:
+- Heimteam
+- Gegnerteam
+- Spielerlisten
+
+Spieler sollen für Quick Actions nutzbar sein:
+- Einlauf
+- Tor
+- Verletzung
+Spieler haben zugehörige Clips, aber keine zwingende eigene Bildverwaltung.
+
+## Dashboard
+Zeige:
+- nächstes Projekt
+- aktives Projekt
+- Warnungen
+- VLC-Status
+- Online/Offline
+- letzter Sync
+- Medienverfügbarkeit
+- Schnellaktionen
+
+## Projekte
+Unterteile Projekte intern in:
+- Übersicht
+- Stammdaten
+- Medien
+- Szenen
+- Teams & Spieler
+- Projekt-Check
+
+## Mediathek
+Zentrale Medienverwaltung mit Suche, Filtern, Kategorien, Vorschau und Metadaten.
+
+## Live-Steuerung
+Wichtigster Screen.
+Nutze ein 3-Spalten-Layout:
+- links: Heim-Aktionen
+- mitte: Hauptsteuerung, aktiver Clip, nächster Clip, Status
+- rechts: Gegner-Aktionen und Queue/Live-Zustand
+
+Große Buttons/Kacheln.
+
+Wichtige Live-Aktionen:
+- Vor dem Spiel
+- Spielbeginn
+- Pause
+- Nach dem Spiel
+- Einlauf Heim/Gegner
+- 2 Minuten Heim/Gegner
+- Timeout Heim/Gegner
+- rote Karte
+- Wischer
+- Tor
+- Verletzung
+- Pause
+- Stop
+- Weiter
+
+Spieleransicht:
+- als Seitenansicht/Side Panel
+- suchbar
+- scrollbar
+- Heim und Gegner getrennt
+
+## Einstellungen
+Bereiche:
+- Allgemein
+- Wiedergabe/VLC
+- Live-Regeln
+- Sync
+- Speicher
+- Logging
+- Backend/Supabase-Diagnose
+
+## Logging
+Logge:
+- Aktion
+- Zeitpunkt
+- Gerät
+- Erfolg/Fehler
+- betroffene Szene/Clip
+- Sync-Konflikte
+- VLC-Fehler
+
+## Offline/Sync
+- App vollständig offline nutzbar
+- lokale Datenbank
+- lokaler Mediencache
+- Medien mindestens auf Haupt-PC vollständig lokal
+- Synchronisation bei Internetverbindung
+- Konfliktregel: Haupt-PC gewinnt
+
+## VLC
+VLC ist die Wiedergabeinstanz im Hintergrund.
+Die App soll darauf architektonisch vorbereitet werden:
+- Wiedergabe starten
+- pausieren
+- stoppen
+- Clipwechsel
+- Statusprüfung
+- Fehlererkennung
+
+## Design
+- dark UI
+- modern, minimalistisch, professionell
+- große Kacheln
+- klare visuelle Hierarchie
+- Farben:
+  - Rot = kritisch
+  - Gelb = Warnung
+  - Grün = aktiv
+  - Blau = Standard
+  - Grau = neutral
+
+## Technische Anforderungen
+- saubere Feature-First-Struktur
+- State-Management sauber und konsistent
+- Routing sauber
+- Models/Entities getrennt von UI
+- wiederverwendbare Widgets
+- keine chaotische, vermischte Architektur
+- möglichst production-ready Grundstruktur
+
+## Erwartetes Ergebnis
+Setze das Projekt nicht nur oberflächlich um, sondern strukturiere es so, dass daraus ein echtes neues Hauptprojekt entstehen kann.
+
+Liefere:
+1. komplette Projektstruktur
+2. alle Hauptscreens als saubere Flutter-Implementierung
+3. grundlegende Navigation
+4. Mock-/lokale Datenbasis zum Testen
+5. erste saubere Logik für Projekte, Medien, Szenen und Live Control
+6. Supabase-Backend-Struktur mit Migrationen und Tabellen
+7. gut lesbaren, modularen Code
+8. sinnvolle TODOs an den Stellen, an denen später VLC/Remote-Steuerung weiter ergänzt wird
+
+Arbeite sauber, modular und vollständig. Triff sinnvolle technische Entscheidungen, wenn nicht alles exakt vorgegeben ist, aber bleibe innerhalb dieser Produktvorgaben.
+Integriere Supabase sauber in das neue Projekt als Online-Backend und Sync-Ebene.
+
+## Ziele
+- Supabase CLI initialisieren und mit dem bestehenden Projekt verknüpfen
+- Migrationsstruktur anlegen
+- Tabellen, Indizes und Basis-Policies vorbereiten
+- Flutter-Anbindung sauber kapseln
+- `.env`-basierte Konfiguration verwenden
+- keine Secrets hart im UI-Code speichern
+
+## CLI-Aufgaben
+Wenn Supabase CLI lokal noch nicht eingerichtet ist:
+- Supabase CLI vorbereiten
+- Projekt initialisieren
+- lokales Supabase-Verzeichnis anlegen
+- mit dem bestehenden Supabase-Projekt verlinken
+
+## Backend-Zweck
+Supabase soll verwendet werden für:
+- projects
+- teams
+- players
+- media metadata
+- scenes
+- scene clips
+- device profiles
+- live logs
+- sync status
+
+## Anforderungen an die Struktur
+Lege produktionsnahe Migrationen an für:
+- projects
+- teams
+- players
+- media_categories
+- media_items
+- scenes
+- scene_clips
+- device_profiles
+- live_log_entries
+
+## Zusätzlich
+- created_at / updated_at Felder
+- sinnvolle foreign keys
+- Indizes für häufige Abfragen
+- soft-delete oder Archivstatus dort, wo sinnvoll
+- Konflikt-/Sync-relevante Felder vorbereiten
+- Haupt-PC-Priorität in der Datenstruktur mitdenken
+
+## Flutter-Seite
+Erstelle:
+- SupabaseClient-Initialisierung
+- BackendConfig
+- Repository-Schicht
+- Datenquellen für Remote-Zugriffe
+- Offline-Strategie mit späterem Sync
+- klare Trennung zwischen local und remote datasource
+
+## Wichtig
+Die App muss auch ohne aktive Internetverbindung funktionieren. Supabase darf die Kernfunktion nicht blockieren.
+Erstelle die Supabase-Datenbankstruktur für die LED-Management-Software als SQL-Migrationen.
+
+## Tabellen
+1. projects
+2. teams
+3. players
+4. media_categories
+5. media_items
+6. scenes
+7. scene_clips
+8. device_profiles
+9. live_log_entries
+
+## projects
+- id uuid primary key
+- name text
+- event_date date/timestamp
+- location text
+- status text
+- home_team_name text
+- away_team_name text
+- notes text
+- archived_at timestamp null
+- created_at timestamp
+- updated_at timestamp
+
+## teams
+- id uuid pk
+- project_id fk -> projects
+- name text
+- side text check home/away
+- created_at
+- updated_at
+
+## players
+- id uuid pk
+- project_id fk -> projects
+- team_side text
+- name text
+- number text/int
+- linked_clip_ids jsonb or relation-ready structure
+- enabled_for_intro boolean
+- enabled_for_goal boolean
+- enabled_for_injury boolean
+- created_at
+- updated_at
+
+## media_categories
+- id uuid pk
+- name text
+- is_system_category boolean
+- created_at
+- updated_at
+
+## media_items
+- id uuid pk
+- name text
+- local_path text
+- remote_path text
+- file_type text
+- category_id fk -> media_categories
+- tags jsonb
+- duration_ms bigint
+- is_active boolean
+- sync_status text
+- checksum text
+- created_at
+- updated_at
+
+## scenes
+- id uuid pk
+- project_id fk -> projects
+- name text
+- category text
+- is_looping boolean
+- is_active boolean
+- is_default boolean
+- fallback_scene_id uuid null
+- created_at
+- updated_at
+
+## scene_clips
+- id uuid pk
+- scene_id fk -> scenes
+- media_item_id fk -> media_items
+- order_index int
+- is_protected boolean
+- is_overridable boolean
+- priority int
+- play_once boolean
+- repeatable boolean
+- rotation_group text null
+- interruption_policy text
+- return_behavior text
+- created_at
+- updated_at
+
+## device_profiles
+- id uuid pk
+- name text
+- device_type text check main_pc/secondary_device
+- is_online boolean
+- last_sync_at timestamp null
+- created_at
+- updated_at
+
+## live_log_entries
+- id uuid pk
+- project_id fk -> projects
+- device_id fk -> device_profiles
+- actor_name text
+- action text
+- details jsonb
+- success boolean
+- created_at timestamp
+
+## Anforderungen
+- sinnvolle Indizes
+- updated_at Trigger
+- konsistente Namensgebung
+- SQL sauber und ausführbar
+- spätere Erweiterungen berücksichtigen
+Integriere Supabase sauber in das Flutter-Projekt der LED-Management-Software.
+
+## Anforderungen
+- nutze das offizielle Supabase Flutter SDK
+- Initialisierung zentral im App-Start
+- Konfigurationswerte aus `.env`
+- eigener BackendConfig-Layer
+- RemoteDataSources getrennt von LocalDataSources
+- Repository-Schicht für Projekte, Medien, Szenen, Geräte und Logs
+- Fehlerbehandlung sauber
+- keine direkten Supabase-Abfragen in Widgets
+
+## Benötigte Bereiche
+- Supabase bootstrap/init
+- Auth/Session erstmal optional vorbereiten, aber nicht als harte Voraussetzung für Version 1
+- ProjectRemoteDataSource
+- SceneRemoteDataSource
+- MediaRemoteDataSource
+- DeviceRemoteDataSource
+- LogRemoteDataSource
+
+## Zusätzlich
+- Mock-Fallback für Offlinebetrieb
+- SyncService vorbereiten
+- Connectivity-abhängige Remote-Synchronisation vorbereiten
+- Haupt-PC-Konfliktregel als Architektur-TODO berücksichtigen
+Richte für das Flutter-Projekt eine saubere Konfigurationsstrategie für Supabase ein.
+
+## Anforderungen
+- nutze `.env` oder gleichwertige lokale Konfiguration
+- keine Secrets hart im Widget-Code
+- keine sensiblen Werte in UI-Dateien
+- zentrale Config-Klasse erstellen
+- Entwicklungs-/Produktionsfähigkeit mitdenken
+
+## Benötigt
+- SUPABASE_URL
+- SUPABASE_ANON_OR_PUBLISHABLE_KEY
+- optional weitere Backend-Flags
+
+## Flutter-seitig
+- dotenv laden
+- Fehler anzeigen, wenn Konfiguration fehlt
+- App soll auch mit Mock-/Offline-Fallback startbar bleiben
+Baue eine Offline-First-Synchronisationsarchitektur für Flutter + Supabase.
+
+## Ziel
+Die LED-Management-Software muss lokal vollständig nutzbar sein. Supabase dient als Synchronisations- und Backend-Ebene, nicht als Voraussetzung für Bedienung und Live-Betrieb.
+
+## Anforderungen
+- lokale Datenquelle priorisieren
+- entfernte Datenquelle via Supabase
+- SyncService
+- Konflikterkennung vorbereiten
+- Haupt-PC gewinnt bei Konflikten
+- Geräteprofil berücksichtigen
+- Sync-Status je Datensatz oder Bereich vorbereiten
+- letztes Änderungsdatum berücksichtigen
+- Remote- und Local-Modelle sauber mappen
+
+## Datenbereiche
+- Projekte
+- Teams
+- Spieler
+- Medien-Metadaten
+- Szenen
+- Szenenclips
+- Logs
+- Geräteprofile
+
+## Zusätzlich
+- späteres Medien-Dateisync-Konzept vorbereiten
+- Medien selbst nicht blind nur aus Supabase DB laden, sondern Datei-/Metadatenlogik trennen
+Nutze Supabase CLI für das Backend-Setup dieses Projekts.
+
+## Falls Supabase CLI noch nicht eingerichtet ist
+Führe die nötigen Schritte aus, um Supabase CLI nutzbar zu machen.
+
+## Dann
+1. lokales Supabase-Projekt initialisieren
+2. mit dem vorhandenen Supabase-Projekt verlinken
+3. Migrationsstruktur anlegen
+4. benötigte SQL-Migrationen erzeugen
+5. Backend-Struktur für die LED-Management-Software vorbereiten
+
+## Wichtig
+- arbeite sauber und nachvollziehbar
+- nutze keine unsichere Hardcodierung sensibler Werte im App-Code
+- trenne CLI-Setup, Migrationen und Flutter-Integration sauber
+- gib am Ende an, welche Dateien angelegt oder geändert wurden
+
+
+
